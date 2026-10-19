@@ -14,7 +14,7 @@ in place. Phase 0 in progress: first debug build pending on JDK 21.
 | Platform | Android only | Mihon-style extension APKs only work there |
 | Language | Kotlin, fork of Mihon `deeb9b2` (0.21.2) | Keeps library, browse, updates, download queue, extension installer, backup |
 | Name, id | Dokusho (読書, "reading"), app id `app.dokusho`, confirmed | One Japanese word like Mihon; "Shosetsu" and "Yomu" are taken by other readers |
-| Extensions | Keiyoushi toolchain (convention plugins, `keiyoushi {}` DSL, KSP, `KeiSource`) in our own repo, new lib version `2.0` with a text API | Proven build and publish pipeline; new lib version keeps manga APKs from loading |
+| Extensions | Keiyoushi toolchain (convention plugins, `dokusho {}` DSL, KSP, `DokushoSource`) in our own repo, new lib version `2.0` with a text API | Proven build and publish pipeline; new lib version keeps manga APKs from loading |
 | Reader | Compose paragraph list, not WebView | Paragraph index doubles as progress, TTS highlight and export block model |
 | Downloads | `chapter.html` per chapter inside Mihon's existing folder layout | Download queue, cache index and notifier stay as they are |
 | Export | EPUB default, PDF optional; split is a setting, default EPUB whole book and PDF every 100 chapters | Qasim asked for a changeable default |
@@ -68,7 +68,7 @@ Design detail for each row: `.claude/rules/novel.md`.
 ### 1. Text source contract (2 days)
 - `source-api`: `NovelSource`, `ChapterContent`, `HttpNovelSource`; `getPageList` returns empty for novel sources.
 - Loader constants and lib version; `consumer-proguard.pro` keeps.
-- Extension repo: `:extensions-lib` stub module mirroring the new API, `libVersion = "2.0"`, generated manifest emits `dokusho.*` keys, `KeiSource` gains `getChapterContent`.
+- Extension repo: `:extensions-lib` stub module mirroring the new API, `libVersion = "2.0"`, generated manifest emits `dokusho.*` keys, `DokushoSource` gains `getChapterContent`.
 - Done when: a hello-world extension built from the extension repo installs and lists in the app.
 
 ### 2. Reader (1 week)
