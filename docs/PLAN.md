@@ -60,7 +60,7 @@ Design detail for each row: `.claude/rules/novel.md`.
 
 ### 0. Build green and branded (1 to 2 days)
 - [x] Repos, remotes, Mihon community files removed, Claude Code config
-- [ ] `./gradlew :app:assembleDebug -Pdist=local` passes with JDK 21
+- [x] `./gradlew :app:assembleDebug -Pdist=local` passes with JDK 21 (2026-10-19, five APKs)
 - [ ] App id `app.dokusho`, name Dokusho, launcher icon, `release.yml` guard, updater and Firebase off, `.github/.java-version` stays 21
 - [ ] Package `eu.kanade.tachiyomi` stays: extensions-lib compatibility depends on it
 - Done when: debug APK installs, opens, an extension repo URL can be added.
