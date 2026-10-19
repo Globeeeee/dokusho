@@ -36,6 +36,8 @@ offers new versions itself.
 > v0.1.0 is the rebranded base: it installs and runs, but reading novels arrives with
 > phases 1 to 4 of the plan.
 
+How releases are made: [RELEASING.md](RELEASING.md).
+
 ## What it will do
 
 | Area | Dokusho |
