@@ -312,7 +312,6 @@ class MainActivity : BaseActivity() {
                 if (!isBenchmarkBuildType) {
                     if (isLaunch) CheckForUpdates()
                     ShowOnboarding()
-                    ShowDonationCampaign()
                 }
             }
         }
@@ -425,6 +424,8 @@ class MainActivity : BaseActivity() {
         }
     }
 
+    // ponytail: Mihon's own donation campaign, no longer called; kept so upstream merges stay clean
+    @Suppress("unused")
     @Composable
     private fun ShowDonationCampaign() {
         val navigator = LocalNavigator.currentOrThrow

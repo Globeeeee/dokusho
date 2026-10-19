@@ -34,7 +34,8 @@ class TrackerManager {
     val mangaBaka = MangaBaka(11L)
     val comick = Comick(12L)
 
-    val trackers = listOf(
+    // Every tracker id that may exist in the database or a restored backup; lookups by id use this.
+    private val allTrackers: List<Tracker> = listOf(
         mangaBaka,
         myAnimeList,
         aniList,
@@ -49,6 +50,10 @@ class TrackerManager {
         comick,
     )
 
+    // ponytail: trackers are off for personal use; re-enable aniList and myAnimeList once Dokusho
+    // has its own OAuth client ids (docs/PLAN.md, Later).
+    val trackers: List<Tracker> = emptyList()
+
     fun loggedInTrackers() = trackers.filter { it.isLoggedIn }
 
     fun loggedInTrackersFlow() = combine(trackers.map { it.isLoggedInFlow }) {
@@ -57,7 +62,7 @@ class TrackerManager {
         }
     }
 
-    fun get(id: Long) = trackers.find { it.id == id }
+    fun get(id: Long) = allTrackers.find { it.id == id }
 
     fun getAll(ids: Set<Long>) = trackers.filter { it.id in ids }
 }

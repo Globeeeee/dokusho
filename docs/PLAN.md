@@ -5,7 +5,7 @@ installable extensions, downloads them for offline reading, exports EPUB and PDF
 aloud in the background.
 
 Status (2026-10-19): repos created and pushed, Mihon-only files removed, Claude Code config
-in place. Phase 0 in progress: rebrand done, Firebase and tracker client ids pending.
+in place. Phase 0 done once CI is green: rebrand, icon, Firebase, trackers off. Next: phase 1.
 
 ## Decisions taken
 
@@ -19,7 +19,7 @@ in place. Phase 0 in progress: rebrand done, Firebase and tracker client ids pen
 | Downloads | `chapter.html` per chapter inside Mihon's existing folder layout | Download queue, cache index and notifier stay as they are |
 | Export | EPUB default, PDF optional; split is a setting, default EPUB whole book and PDF every 100 chapters | Qasim asked for a changeable default |
 | TTS | Android system `TextToSpeech` behind a `TtsEngine` interface; Supertonic 3 (ONNX, on-demand 300 to 400 MB download) as a later optional engine | Free, offline, works today; Supertonic upstream is archived and still skips words on short text |
-| Trackers | Keep AniList and MAL (both track light novels), hide the rest | Smallest change, real value for novel readers |
+| Trackers | Off for now. Personal use, reading and listening first | Qasim has no AniList or MAL account; revisit later |
 | Paid sites | Webnovel and WuxiaWorld through the user's own login, locked chapters stay locked | No paywall bypass |
 | Telemetry | Firebase Crashlytics and Analytics in CI and GitHub release builds, project under Qasim's Google account; FOSS and local builds have none. Config via `GOOGLE_SERVICES_JSON` secret, never committed | Qasim asked for his own Firebase; crash reports matter for a scraping app |
 | Updater | On for release builds, reads GitHub releases of `Globeeeee/dokusho` | Free update channel without a store |
@@ -68,8 +68,8 @@ Design detail for each row: `.claude/rules/novel.md`.
 - [x] `release.yml` guard and APK names, updater on `Globeeeee/dokusho`, About links, privacy policy in `docs/PRIVACY.md`
 - [x] Mihon's tracked `google-services.json` removed; CI writes ours from a secret or builds without telemetry
 - [x] Firebase project `dokusho-reader` under Qasim's account, Android apps `app.dokusho`, `.dev`, `.debug`, secret `GOOGLE_SERVICES_JSON` set (config kept at `~/.dokusho/signing/google-services.json`)
-- [ ] Tracker OAuth: own AniList and MyAnimeList client ids with `dokusho://` redirects; remove or replace the Mihon-registered client credentials still embedded for Hikka, Bangumi, Kitsu, Shikimori and Suwayomi (flagged by gitleaks, inherited from upstream)
-- [ ] Mihon's donation and "Support us" screen hidden; its strings left untouched on purpose since they describe Mihon's own campaign
+- [x] Trackers switched off for personal use (no tracker UI); setup moved to Later
+- [x] Mihon's donation popup and "Support us" menu hidden; its strings left untouched on purpose since they describe Mihon's own campaign
 - [ ] Package `eu.kanade.tachiyomi` stays: extensions-lib compatibility depends on it
 - Done when: debug APK installs, opens, an extension repo URL can be added.
 
@@ -119,9 +119,13 @@ MVP = phases 0 to 4, roughly 3 weeks.
 - Later: `SupertonicEngine` with ONNX Runtime Android, on-demand model download on Wi-Fi, paragraph-level synthesis with one-ahead buffering and per-chapter WAV cache.
 - Done when: playback continues with the screen off for a full chapter and survives a phone call.
 
+### Later (not scheduled)
+- Trackers: register Dokusho OAuth clients on AniList and MyAnimeList with `dokusho://anilist-auth` and `dokusho://myanimelist-auth` redirects, put the ids in CI secrets, set `TrackerManager.trackers` back to `listOf(aniList, myAnimeList)`. Remove or replace the Mihon-registered client credentials still embedded for Hikka, Bangumi, Kitsu, Shikimori and Suwayomi.
+- MangaUpdates tracker (covers LOTM and Reverend Insanity as Novel, not Shadow Slave): needs only a free account, no OAuth registration; enable with `listOf(mangaUpdates)` in `TrackerManager.trackers`. NovelUpdates has no public API.
+- Public release: store listing, F-Droid, translations.
+
 ### 7. Polish and release
 - Strings: English `base` first ("manga" to "novel"); other locales fall back where untranslated.
-- Trackers: AniList and MAL visible, others hidden.
 - Local import: EPUB and TXT folders into `LocalSource`.
 - Release workflow on `v*` tags, keystore secrets, GitHub Releases. F-Droid later.
 
