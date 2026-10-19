@@ -20,3 +20,16 @@ local.properties
 .claude/plans/*
 !.claude/plans/README.md
 .history/
+
+# Secrets: never commit. See docs/SECRETS.md
+.env
+.env.*
+!.env.example
+*.jks
+*.keystore
+*.p12
+*.pem
+*.key
+keystore.properties
+google-services.json
+service-account*.json

@@ -1,0 +1,13 @@
+# gitleaks config: extend the default rules, allow known public values.
+title = "Dokusho"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Public values, generated lockfiles, translations"
+paths = [
+  '''.*\.lock$''',
+  '''i18n/.*''',
+  '''keystore\.properties\.example$''',
+]

@@ -54,7 +54,7 @@ locked) · reading progress durability · migrations · accessibility · respons
 | DI | Metro: `@Inject`, `@SingleIn(AppScope)`, `@ContributesBinding`. Extensions only see what `MetroInjektRegistrar` exposes. No service locators in new code. |
 | Strings | `i18n/src/commonMain/moko-resources/base/strings.xml` → `MR.strings.*`. English first, never hardcode copy in Compose. |
 | Logging | `logcat { }` only, never `println` or `Log.*`. Never log cookies, tokens, account emails, chapter text or URLs with session params. |
-| Secrets | `keystore.properties`, `*.jks`, API keys: never in source. CI uses secrets. |
+| Secrets | Never in source, commits, chat, logs or tool output. Local copies only in `~/.dokusho/signing/`; CI uses GitHub secrets; repos hold `.env.example` with names only. Pass values from files (`--body "$(cat f)"`), never as literals. Never read `.env`, keystores or `~/.dokusho` into context. Policy: `docs/SECRETS.md` in the app repo. |
 | Generated | Never hand-edit `build/`, SQLDelight generated classes, Metro generated code. |
 | Data | New columns = new `data/src/main/sqldelight/tachiyomi/migrations/<n>.sqm` + schema file. CI runs `verifySqlDelightMigration`. |
 
