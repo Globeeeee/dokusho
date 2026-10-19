@@ -122,6 +122,7 @@ MVP = phases 0 to 4, roughly 3 weeks.
 ### Later (not scheduled)
 - Trackers: register Dokusho OAuth clients on AniList and MyAnimeList with `dokusho://anilist-auth` and `dokusho://myanimelist-auth` redirects, put the ids in CI secrets, set `TrackerManager.trackers` back to `listOf(aniList, myAnimeList)`. Remove or replace the Mihon-registered client credentials still embedded for Hikka, Bangumi, Kitsu, Shikimori and Suwayomi.
 - MangaUpdates tracker (covers LOTM and Reverend Insanity as Novel, not Shadow Slave): needs only a free account, no OAuth registration; enable with `listOf(mangaUpdates)` in `TrackerManager.trackers`. NovelUpdates has no public API.
+- Import from a tracker list: read the user's MangaUpdates (or AniList) list, search each title across installed extensions, add matches to the library. Revisit when trackers come back; until then library and progress stay local only.
 - Public release: store listing, F-Droid, translations.
 
 ### 7. Polish and release
