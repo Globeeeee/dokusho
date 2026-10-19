@@ -41,16 +41,18 @@ import java.io.File
  */
 internal object ExtensionLoader {
 
-    private const val EXTENSION_FEATURE = "tachiyomi.extension"
-    private const val METADATA_SOURCE_CLASS = "tachiyomi.extension.class"
-    private const val METADATA_SOURCE_FACTORY = "tachiyomi.extension.factory"
-    private const val METADATA_NSFW = "tachiyomi.extension.nsfw"
+    // Dokusho uses its own feature and keys so manga extensions built for Mihon never load here.
+    private const val EXTENSION_FEATURE = "dokusho.extension"
+    private const val METADATA_SOURCE_CLASS = "dokusho.extension.class"
+    private const val METADATA_SOURCE_FACTORY = "dokusho.extension.factory"
+    private const val METADATA_NSFW = "dokusho.extension.nsfw"
 
-    private const val METADATA_NAME = "tachiyomix.name"
-    private const val METADATA_EXTENSION_LIB = "tachiyomix.extensionLib"
-    private const val METADATA_CONTENT_WARNING = "tachiyomix.contentWarning"
+    private const val METADATA_NAME = "dokusho.name"
+    private const val METADATA_EXTENSION_LIB = "dokusho.extensionLib"
+    private const val METADATA_CONTENT_WARNING = "dokusho.contentWarning"
 
-    private val SUPPORTED_LIB_VERSIONS = listOf(1.4, 1.6)
+    // 2.0 adds NovelSource and ChapterContent
+    private val SUPPORTED_LIB_VERSIONS = listOf(2.0)
 
     @Suppress("DEPRECATION")
     private val PACKAGE_FLAGS = PackageManager.GET_CONFIGURATIONS or

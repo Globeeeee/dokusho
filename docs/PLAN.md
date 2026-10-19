@@ -5,7 +5,7 @@ installable extensions, downloads them for offline reading, exports EPUB and PDF
 aloud in the background.
 
 Status (2026-10-19): repos created and pushed, Mihon-only files removed, Claude Code config
-in place. Phase 0 done once CI is green: rebrand, icon, Firebase, trackers off. Next: phase 1.
+in place. Phase 0 done and released as v0.1.0. Phase 1 in progress: text contract in source-api and the loader, first extension (Royal Road) built.
 
 ## Decisions taken
 
@@ -74,6 +74,9 @@ Design detail for each row: `.claude/rules/novel.md`.
 - Done when: debug APK installs, opens, an extension repo URL can be added.
 
 ### 1. Text source contract (2 days)
+- [x] `NovelSource` (standalone interface), `ChapterContent(html, title, locked)`, `HttpNovelSource` in `source-api`, proguard keeps
+- [x] Loader: feature `dokusho.extension`, `dokusho.*` meta-data, `SUPPORTED_LIB_VERSIONS = [2.0]`
+- [ ] App calls `getChapterContent` for `NovelSource` (lands with the reader, phase 2)
 - `source-api`: `NovelSource`, `ChapterContent`, `HttpNovelSource`; `getPageList` returns empty for novel sources.
 - Loader constants and lib version; `consumer-proguard.pro` keeps.
 - Extension repo: `:extensions-lib` stub module mirroring the new API, `libVersion = "2.0"`, generated manifest emits `dokusho.*` keys, `DokushoSource` gains `getChapterContent`.

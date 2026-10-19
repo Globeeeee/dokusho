@@ -38,6 +38,29 @@ offers new versions itself.
 
 How releases are made: [RELEASING.md](RELEASING.md).
 
+## Add extensions
+
+Dokusho reads novels through extensions, like Mihon. Add the Dokusho extension store once:
+
+1. Open Dokusho → **More** → **Settings** → **Browse** → **Extension stores**.
+2. Tap **Add extension store** and paste this into **Store index URL**:
+
+   ```
+   https://github.com/Globeeeee/dokusho-extensions/raw/repo/index.pb
+   ```
+
+3. Go to **Browse** → **Extensions** and install the ones you want.
+
+Available extensions:
+
+| Extension | Site | Status |
+|-----------|------|--------|
+| Royal Road | royalroad.com | published; browsing, search and chapter lists work, reading arrives with the reader (phase 2) |
+| Scribble Hub | scribblehub.com | next |
+| Webnovel, WuxiaWorld | official sites, with your own login | planned |
+
+Extension source code: [dokusho-extensions-source](https://github.com/Globeeeee/dokusho-extensions-source).
+
 ## What it will do
 
 | Area | Dokusho |
@@ -62,11 +85,7 @@ arrives with phases 1 to 4. Phases, decisions and risks: [docs/PLAN.md](docs/PLA
 | [dokusho-extensions-source](https://github.com/Globeeeee/dokusho-extensions-source) | source code of the novel extensions |
 | [dokusho-extensions](https://github.com/Globeeeee/dokusho-extensions) | the published extension index that the app reads |
 
-Extension repo URL to add in the app once extensions exist:
-
-```
-https://github.com/Globeeeee/dokusho-extensions/raw/repo/index.pb
-```
+See **Add extensions** above for the store URL.
 
 ## Build from source
 

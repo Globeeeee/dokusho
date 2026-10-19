@@ -30,3 +30,8 @@
 -keep,allowoptimization class eu.kanade.tachiyomi.network.interceptor.RateLimitInterceptorKt { public protected *; }
 -keep,allowoptimization class eu.kanade.tachiyomi.network.interceptor.SpecificHostRateLimitInterceptorKt { public protected *; }
 -keep,allowoptimization class eu.kanade.tachiyomi.util.JsoupExtensionsKt { public protected *; }
+
+# Dokusho text sources
+-keep class eu.kanade.tachiyomi.source.NovelSource { public protected *; }
+-keep class eu.kanade.tachiyomi.source.model.ChapterContent { public protected *; }
+-keep class eu.kanade.tachiyomi.source.online.HttpNovelSource { public protected *; }
