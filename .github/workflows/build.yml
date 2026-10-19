@@ -4,7 +4,6 @@ on:
     paths:
       - '**'
       - '!**.md'
-      - '!fastlane/**'
       - '!i18n/src/commonMain/moko-resources/**/strings.xml'
       - '!i18n/src/commonMain/moko-resources/**/plurals.xml'
       - 'i18n/src/commonMain/moko-resources/base/strings.xml'
@@ -61,8 +60,20 @@ jobs:
           name: test-report-${{ github.sha }}
           path: app/build/reports/tests/testDebugUnitTest
 
+      - name: Write Firebase config
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            printf '%s' "$GOOGLE_SERVICES_JSON" > app/google-services.json
+            echo "TELEMETRY_FLAG=" >> "$GITHUB_ENV"
+          else
+            echo "No GOOGLE_SERVICES_JSON secret, building without telemetry"
+            echo "TELEMETRY_FLAG=-Pinclude-telemetry=false" >> "$GITHUB_ENV"
+          fi
+
       - name: Build app
-        run: ./gradlew assembleRelease -Pdist=ci
+        run: ./gradlew assembleRelease -Pdist=ci $TELEMETRY_FLAG
 
       - name: Upload APK
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

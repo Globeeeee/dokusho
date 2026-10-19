@@ -29,8 +29,8 @@ How credentials are stored, used and rotated across the Dokusho repos. The same 
 | Its store and key passwords, alias | same | `~/.dokusho/signing/dokusho-extensions.env` | secrets `KEY_STORE_PASSWORD`, `KEY_PASSWORD`, `ALIAS` |
 | Its certificate fingerprint | app trusts the index with it | `~/.dokusho/signing/dokusho-extensions.fingerprint` | variable `SIGNING_KEY_FINGERPRINT` (public) |
 | Index push token | publish job pushes to `dokusho-extensions` | none | secret `BOT_PAT` |
-| App release keystore | `dokusho` release builds (phase 7) | `~/.dokusho/signing/dokusho-app.jks` + `keystore.properties` | secrets `storeFile`, `storePassword`, `keyAlias`, `keyPassword` with `MIHON_GITHUB_RELEASE=true` |
-| Firebase config | not used; telemetry is off | none | none |
+| App release keystore | `dokusho` release builds (phase 7) | `~/.dokusho/signing/dokusho-app.jks` + `keystore.properties` | secrets `storeFile`, `storePassword`, `keyAlias`, `keyPassword` with `DOKUSHO_GITHUB_RELEASE=true` |
+| Firebase config (`google-services.json`) | Crashlytics and Analytics in CI and GitHub release builds | `~/.dokusho/signing/google-services.json` | secret `GOOGLE_SERVICES_JSON`; without it CI builds with `-Pinclude-telemetry=false` |
 
 ## Local use
 

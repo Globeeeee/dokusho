@@ -5,7 +5,7 @@ installable extensions, downloads them for offline reading, exports EPUB and PDF
 aloud in the background.
 
 Status (2026-10-19): repos created and pushed, Mihon-only files removed, Claude Code config
-in place. Phase 0 in progress: first debug build pending on JDK 21.
+in place. Phase 0 in progress: rebrand done, Firebase and tracker client ids pending.
 
 ## Decisions taken
 
@@ -21,6 +21,8 @@ in place. Phase 0 in progress: first debug build pending on JDK 21.
 | TTS | Android system `TextToSpeech` behind a `TtsEngine` interface; Supertonic 3 (ONNX, on-demand 300 to 400 MB download) as a later optional engine | Free, offline, works today; Supertonic upstream is archived and still skips words on short text |
 | Trackers | Keep AniList and MAL (both track light novels), hide the rest | Smallest change, real value for novel readers |
 | Paid sites | Webnovel and WuxiaWorld through the user's own login, locked chapters stay locked | No paywall bypass |
+| Telemetry | Firebase Crashlytics and Analytics in CI and GitHub release builds, project under Qasim's Google account; FOSS and local builds have none. Config via `GOOGLE_SERVICES_JSON` secret, never committed | Qasim asked for his own Firebase; crash reports matter for a scraping app |
+| Updater | On for release builds, reads GitHub releases of `Globeeeee/dokusho` | Free update channel without a store |
 | JDK | 21, Android Studio's bundled JBR locally (`.claude/settings.local.json`), Temurin 21 in CI | Metro Gradle plugin 1.4.5 refuses JDK 17 |
 
 ## Repos
@@ -61,7 +63,13 @@ Design detail for each row: `.claude/rules/novel.md`.
 ### 0. Build green and branded (1 to 2 days)
 - [x] Repos, remotes, Mihon community files removed, Claude Code config
 - [x] `./gradlew :app:assembleDebug -Pdist=local` passes with JDK 21 (2026-10-19, five APKs)
-- [ ] App id `app.dokusho`, name Dokusho, launcher icon, `release.yml` guard, updater and Firebase off, `.github/.java-version` stays 21
+- [x] App id `app.dokusho` (dev `app.dokusho.dev`), version 0.1.0 (code 1), name Dokusho in every locale, deep-link schemes `dokusho` and `app.dokusho`
+- [x] Original launcher icon (adaptive, themed, splash, notification glyph, dev variant), SVG master in `docs/assets/icon.svg`
+- [x] `release.yml` guard and APK names, updater on `Globeeeee/dokusho`, About links, privacy policy in `docs/PRIVACY.md`
+- [x] Mihon's tracked `google-services.json` removed; CI writes ours from a secret or builds without telemetry
+- [x] Firebase project `dokusho-reader` under Qasim's account, Android apps `app.dokusho`, `.dev`, `.debug`, secret `GOOGLE_SERVICES_JSON` set (config kept at `~/.dokusho/signing/google-services.json`)
+- [ ] Tracker OAuth: own AniList and MyAnimeList client ids with `dokusho://` redirects; remove or replace the Mihon-registered client credentials still embedded for Hikka, Bangumi, Kitsu, Shikimori and Suwayomi (flagged by gitleaks, inherited from upstream)
+- [ ] Mihon's donation and "Support us" screen hidden; its strings left untouched on purpose since they describe Mihon's own campaign
 - [ ] Package `eu.kanade.tachiyomi` stays: extensions-lib compatibility depends on it
 - Done when: debug APK installs, opens, an extension repo URL can be added.
 

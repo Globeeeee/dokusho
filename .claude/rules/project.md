@@ -26,7 +26,7 @@ Read for NATIVE, UPSTREAM, or when you need build commands and conventions.
 
 `-Pdist` values: `local`, `ci`, `github`, `foss` (`gradle/build-logic/.../BuildConfig.kt`).
 JDK: CI uses 21 (`.github/.java-version`); local 17 works until proven otherwise.
-Signing: `keystore.properties` at repo root (gitignored) or env when `MIHON_GITHUB_RELEASE=true`.
+Signing: `keystore.properties` at repo root (gitignored) or env when `DOKUSHO_GITHUB_RELEASE=true`.
 
 ## Native
 

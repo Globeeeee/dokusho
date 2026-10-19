@@ -78,7 +78,7 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
 
-                <data android:scheme="mihon" />
+                <data android:scheme="dokusho" />
                 <data android:host="extension-store" />
             </intent-filter>
 
@@ -189,7 +189,7 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
 
-                <data android:scheme="mihon" />
+                <data android:scheme="dokusho" />
 
                 <data android:host="anilist-auth" />
                 <data android:host="bangumi-auth" />
@@ -206,7 +206,7 @@
                 <category android:name="android.intent.category.BROWSABLE" />
 
                 <!-- Comick requires native reverse-domain schemes  -->
-                <data android:scheme="app.mihon" />
+                <data android:scheme="app.dokusho" />
                 <data android:host="comick-auth" />
             </intent-filter>
         </activity>
