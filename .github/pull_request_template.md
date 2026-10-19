@@ -1,12 +1,12 @@
 <!--
-  Please include a summary of the change and which issue is fixed.
-  Also make sure you've tested your code and also done a self-review of it.
-  Don't forget to check all base themes and tablet mode for relevant changes.
-  
-  If your changes are visual, please provide images below:
-
-### Images
-| Image 1 | Image 2 |
-| ------- | ------- |
-| ![](https://github.githubassets.com/images/modules/logos_page/Octocat.png) | ![](https://github.githubassets.com/images/modules/logos_page/Octocat.png) |
+Summary of the change and the PLAN.md phase it belongs to.
 -->
+
+Checklist:
+
+- [ ] `./gradlew spotlessCheck :app:testDebugUnitTest verifySqlDelightMigration` passes
+- [ ] Debug build installed and smoke-tested on a device
+- [ ] New strings in `i18n/.../base/strings.xml`, no hardcoded copy
+- [ ] New columns have a migration
+- [ ] No paywall, login or locked-chapter boundary weakened
+- [ ] Mihon files touched only where unavoidable

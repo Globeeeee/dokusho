@@ -6,7 +6,6 @@ build
 # IDE files
 *.iml
 .idea/*
-!.idea/icon.svg
 /captures
 
 # Configuration files
@@ -15,3 +14,9 @@ local.properties
 
 # macOS specific files
 .DS_Store
+
+# Claude Code local state
+.claude/settings.local.json
+.claude/plans/*
+!.claude/plans/README.md
+.history/
