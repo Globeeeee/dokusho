@@ -166,7 +166,7 @@ jobs:
           tag_name: ${{ needs.get_tag.outputs.tag }}
           name: Dokusho ${{ needs.get_tag.outputs.tag }}
           body: |
-            Dokusho ${{ needs.get_tag.outputs.tag }}.
+            Dokusho ${{ needs.get_tag.outputs.tag }}. See [docs/PLAN.md](https://github.com/Globeeeee/dokusho/blob/main/docs/PLAN.md) for what this version can do.
 
             > [!TIP]
             >
@@ -178,6 +178,6 @@ jobs:
             dokusho-armeabi-v7a-${{ needs.get_tag.outputs.tag }}.apk
             dokusho-x86-${{ needs.get_tag.outputs.tag }}.apk
             dokusho-x86_64-${{ needs.get_tag.outputs.tag }}.apk
-          draft: true
+          draft: false
           prerelease: false
           token: ${{ secrets.GITHUB_TOKEN }}

@@ -1,4 +1,10 @@
+<div align="center">
+
+<img src="./docs/assets/icon.svg" alt="Dokusho icon" width="96"/>
+
 # Dokusho
+
+</div>
 
 **Dokusho** (読書, "reading") is a free, open source web novel reader for Android. It is built
 on the [Mihon](https://github.com/mihonapp/mihon) code base, which was made for manga; Dokusho
@@ -8,12 +14,34 @@ Dokusho ships no content. It reads novels from the sites you already use, throug
 you install. Sites that need an account use your own login, and chapters your account cannot
 read stay locked.
 
+## Download
+
+[![Latest release](https://img.shields.io/github/v/release/Globeeeee/dokusho?label=Download&labelColor=1F2A44&color=E3A23C)](https://github.com/Globeeeee/dokusho/releases/latest)
+[![Build](https://img.shields.io/github/actions/workflow/status/Globeeeee/dokusho/build.yml?branch=main&label=build&labelColor=1F2A44)](https://github.com/Globeeeee/dokusho/actions/workflows/build.yml)
+[![License](https://img.shields.io/github/license/Globeeeee/dokusho?labelColor=1F2A44)](LICENSE)
+
+Requires Android 8.0 or higher. Open the
+[latest release](https://github.com/Globeeeee/dokusho/releases/latest) on your phone and tap
+the APK that fits it:
+
+| File | For |
+|------|-----|
+| `dokusho-vX.Y.Z.apk` | any phone, pick this if unsure |
+| `dokusho-arm64-v8a-vX.Y.Z.apk` | almost every phone from the last eight years, smaller download |
+| `dokusho-vX.Y.Z-foss.apk` | no Firebase crash reporting and no update checker |
+
+Android asks once to allow installs from your browser. Updates: Dokusho checks this page and
+offers new versions itself.
+
+> v0.1.0 is the rebranded base: it installs and runs, but reading novels arrives with
+> phases 1 to 4 of the plan.
+
 ## What it will do
 
 | Area | Dokusho |
 |------|---------|
 | Reading | Paragraph-based reader with font, size, line height, margins and paper, sepia, dark and black themes. Progress saved per paragraph |
-| Library | Categories, updates, history, tracking with AniList and MyAnimeList |
+| Library | Categories, new-chapter checks and notifications, history. Everything stays on the phone |
 | Sources | Installable extensions from an extension repo, like Mihon. See the repos below |
 | Offline | Download chapters; read in airplane mode |
 | Export | EPUB (default) or PDF, whole novel or by chapter range, split size is a setting |
@@ -21,7 +49,8 @@ read stay locked.
 
 ## Status
 
-Early development. Phase 0 (rebrand, icon, CI) is nearly done; nothing reads novels yet. Phases, decisions and risks: [docs/PLAN.md](docs/PLAN.md).
+Early development. Phase 0 (rebrand, icon, CI, release pipeline) is done; reading novels
+arrives with phases 1 to 4. Phases, decisions and risks: [docs/PLAN.md](docs/PLAN.md).
 
 ## The three repos
 
