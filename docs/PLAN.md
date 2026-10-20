@@ -97,7 +97,7 @@ Design detail for each row: `.claude/rules/novel.md`.
 - [x] App calls `getChapterContent` for `NovelSource` (`NovelPageLoader`, shipped with the reader in v0.1.1)
 - [x] Extension repo: `:extensions-lib` stub module, lib 2.0 toolchain, `DokushoSource` implements `NovelSource`, novel template in `ext-bootstrap.py` (details in its plan)
 - [x] Royal Road built, signed and published to the store index
-- [ ] Done when: an extension installs from the store and lists in the app. Store listing confirmed on v0.1.0; loading and browsing to be confirmed on v0.1.1.
+- [x] Done when: an extension installs from the store and lists in the app. Confirmed by Qasim on device: six extensions install, list and browse (2026-10-20).
 
 ### 2. Reader (1 week)
 - [x] `NovelPageLoader`: chapter HTML → safelist → blocks, one reader page per paragraph (progress = paragraph index)
