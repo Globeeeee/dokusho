@@ -70,8 +70,8 @@ Design detail for each row: `.claude/rules/novel.md`.
 - [x] Firebase project `dokusho-reader` under Qasim's account, Android apps `app.dokusho`, `.dev`, `.debug`, secret `GOOGLE_SERVICES_JSON` set (config kept at `~/.dokusho/signing/google-services.json`)
 - [x] Trackers switched off for personal use (no tracker UI); setup moved to Later
 - [x] Mihon's donation popup and "Support us" menu hidden; its strings left untouched on purpose since they describe Mihon's own campaign
-- [ ] Package `eu.kanade.tachiyomi` stays: extensions-lib compatibility depends on it
-- Done when: debug APK installs, opens, an extension repo URL can be added.
+- [x] Package `eu.kanade.tachiyomi` kept on purpose (verified 2026-10-20): extension class names depend on it
+- Done when: debug APK installs, opens, an extension repo URL can be added. **Met 2026-10-19**: v0.1.0 installed on Qasim's phone and the Dokusho extension store added (Royal Road listed).
 
 ### 1. Text source contract (2 days)
 - [x] `NovelSource` (standalone interface), `ChapterContent(html, title, locked)`, `HttpNovelSource` in `source-api`, proguard keeps
