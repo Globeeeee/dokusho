@@ -112,7 +112,7 @@ Design detail for each row: `.claude/rules/novel.md`.
 - [x] Images inside chapters: http/https `img` kept, shown inline in scroll mode and one per page in page modes (v0.1.4)
 - [x] Chapter text cached in `ChapterCache` (separate key from page lists, locked chapters never cached), so reopening is instant (v0.1.4)
 - [x] General tab shows only text options for novel sources (background, page number, fullscreen, cutout, keep screen on); image-only options hidden (v0.1.4)
-- [ ] Done when: a 3,000-word chapter scrolls smoothly, position restores, next chapter preloads. Needs Qasim's device test of v0.1.1.
+- [x] Done when: a 3,000-word chapter scrolls smoothly, position restores, next chapter preloads. Confirmed by Qasim on device with v0.1.5 (2026-10-20).
 
 ### 3. Offline downloads (3 days)
 - [x] Downloader branch for `NovelSource`: fetch content, write `chapter.html` + `meta.json` into the chapter folder; locked or empty chapters fail with a clear error
