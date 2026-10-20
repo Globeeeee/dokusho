@@ -75,9 +75,17 @@ they load from the site; downloaded chapters keep their images, see [downloads](
 Open the menu and tap **Listen**. Reading starts at the paragraph at the top of the screen. To
 start somewhere else, stop, move there and tap **Listen** again.
 
-- The sentence being read is highlighted, with a stronger mark on the current word.
-- The reader follows the voice. Scroll or turn pages yourself and it stops following; any
-  playback button, or the spoken paragraph coming back on screen, picks it up again.
+- The sentence being read is highlighted, with a stronger mark on the current word. Pick the
+  colour in the reader menu → **General** → **Read-aloud highlight** (Auto uses your text colour).
+- The reader follows the voice, in the way that suits the reading mode:
+
+  | Reading mode | What it does |
+  |--------------|--------------|
+  | Scroll | Keeps the sentence being read in the middle of the screen |
+  | Pages (any direction) | Turns to the page that holds the sentence being read |
+
+- Scroll or turn pages yourself and it stops following; any playback button, or the sentence
+  being read coming back on screen, picks it up again.
 - At the end of a chapter the voice marks it read and carries on into the next one.
 
 ### Controls

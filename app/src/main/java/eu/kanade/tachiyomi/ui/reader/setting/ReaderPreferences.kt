@@ -302,6 +302,19 @@ class ReaderPreferences(
 
     enum class NovelTheme { AUTO, PAPER, SEPIA, DARK, BLACK }
 
+    /** Colour behind the sentence and word being read aloud. AUTO tints with the text colour. */
+    val novelHighlight: Preference<NovelHighlight> =
+        preferenceStore.getEnum("pref_novel_highlight", NovelHighlight.AUTO)
+
+    enum class NovelHighlight(val argb: Long?) {
+        AUTO(null),
+        YELLOW(0xFFFFD54F),
+        GREEN(0xFF81C784),
+        BLUE(0xFF64B5F6),
+        PINK(0xFFF48FB1),
+        ORANGE(0xFFFFB74D),
+    }
+
     val novelFont: Preference<NovelFont> = preferenceStore.getEnum("pref_novel_font", NovelFont.SERIF)
 
     enum class NovelFont { SERIF, SANS, MONO, SYSTEM }
@@ -311,6 +324,9 @@ class ReaderPreferences(
     val novelJustify: Preference<Boolean> = preferenceStore.getBoolean("pref_novel_justify", false)
 
     val novelIndent: Preference<Boolean> = preferenceStore.getBoolean("pref_novel_indent", false)
+
+    /** Book-style turn between pages in the left-to-right and right-to-left page modes. */
+    val novelPageTurn: Preference<Boolean> = preferenceStore.getBoolean("pref_novel_page_turn", false)
 
     /** Own text and background colors instead of the theme's. */
     val novelCustomColors: Preference<Boolean> = preferenceStore.getBoolean("pref_novel_custom_colors", false)

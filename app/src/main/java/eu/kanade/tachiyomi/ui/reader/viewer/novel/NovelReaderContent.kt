@@ -65,7 +65,13 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
@@ -130,12 +136,14 @@ import tachiyomi.presentation.core.components.SettingsChipRow
 import tachiyomi.presentation.core.components.SliderItem
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.util.collectAsState
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 private val HEADER_HEIGHT = 40.dp
 private val FOOTER_HEIGHT = 32.dp
 
-private data class NovelColors(val background: Color, val text: Color, val muted: Color)
+/** [highlight] is the opaque read-aloud colour; the sentence and word use it at two strengths. */
+private data class NovelColors(val background: Color, val text: Color, val muted: Color, val highlight: Color = text)
 
 /** AUTO follows General > Background color: 0 white, 1 black, 2 gray, 3 follow the system. */
 private fun NovelTheme.resolve(readerTheme: Int, systemDark: Boolean): NovelTheme = when {
@@ -176,6 +184,8 @@ internal fun NovelReaderContent(
     val customColors by preferences.novelCustomColors.collectAsState()
     val customBackground by preferences.novelBackgroundColor.collectAsState()
     val customText by preferences.novelTextColor.collectAsState()
+    val highlightChoice by preferences.novelHighlight.collectAsState()
+    val pageTurn by preferences.novelPageTurn.collectAsState()
     val readerTheme by preferences.readerTheme.collectAsState()
     val showPageNumber by preferences.showPageNumber.collectAsState()
     var showTtsSettings by rememberSaveable { mutableStateOf(false) }
@@ -186,7 +196,7 @@ internal fun NovelReaderContent(
         NovelColors(Color(customBackground), text, text.copy(alpha = 0.6f))
     } else {
         themeColors
-    }
+    }.let { base -> highlightChoice.argb?.let { base.copy(highlight = Color(it)) } ?: base }
     val styles = remember(fontSize, lineHeight, colors, font, paragraphSpacing, justify, indent) {
         val body = TextStyle(
             fontSize = fontSize.sp,
@@ -257,6 +267,7 @@ internal fun NovelReaderContent(
                 PagedReader(
                     blocks, title, start, styles, colors, margin, mode, hasNext, hasPrevious, showPageNumber,
                     chapterJumps, commands, actions, tts?.takeIf { it.chapterId == chapter.chapter.id },
+                    pageTurn = pageTurn,
                     following = followTts,
                     onFollowChange = { followTts = it },
                 )
@@ -422,8 +433,9 @@ private fun ContinuousScrollReader(
             if (it is DragInteraction.Start) onFollowChange(false)
         }
     }
-    // Keep the paragraph being read aloud on screen while following.
-    LaunchedEffect(tts?.chapterId, tts?.blockIndex, tts?.playing, following, scrollItems) {
+    // Keep the sentence being read aloud on screen while following. Keyed on the sentence, not only the
+    // paragraph, so a paragraph taller than the screen keeps scrolling as the voice moves down it.
+    LaunchedEffect(tts?.chapterId, tts?.blockIndex, tts?.spokenStart, tts?.playing, following, scrollItems) {
         val current = tts?.takeIf { it.playing } ?: return@LaunchedEffect
         val index = currentItems.indexOfFirst {
             it is BlockItem && it.chapter.chapter.id == current.chapterId && it.index == current.blockIndex
@@ -436,10 +448,23 @@ private fun ContinuousScrollReader(
             if (item != null) onFollowChange(true)
             return@LaunchedEffect
         }
-        val fullyVisible = item != null &&
-            item.offset >= layout.viewportStartOffset &&
-            item.offset + item.size <= layout.viewportEndOffset
-        if (!fullyVisible) listState.animateScrollToItem(index)
+        // Off screen: bring the paragraph in first, so its layout can be measured below.
+        if (item == null) listState.scrollToItem(index)
+        val placed = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == index } ?: return@LaunchedEffect
+        val textLength = (currentItems[index] as BlockItem).block.text.length
+        // ponytail: the sentence's place in a tall paragraph is estimated from its character range, not the
+        // text layout; close enough to centre it.
+        fun at(offset: Int): Int {
+            if (textLength <= 0) return 0
+            return (placed.size * offset.coerceIn(0, textLength).toFloat() / textLength).toInt()
+        }
+        val sentenceStart = at(current.spokenStart.coerceAtLeast(0))
+        val sentenceEnd = if (current.spokenEnd > current.spokenStart) at(current.spokenEnd) else placed.size
+        val sentenceMiddle = placed.offset + (sentenceStart + sentenceEnd) / 2
+        val viewportMiddle = (listState.layoutInfo.viewportStartOffset + listState.layoutInfo.viewportEndOffset) / 2
+        // Each new sentence glides to the middle of the screen; the list's ends stop it where they must.
+        val delta = sentenceMiddle - viewportMiddle
+        if (abs(delta) > CENTRE_TOLERANCE_PX) listState.animateScrollBy(delta.toFloat())
     }
 
     Box(Modifier.fillMaxSize()) {
@@ -525,6 +550,8 @@ private fun PagedReader(
     actions: NovelReaderActions,
     /** Read-aloud state when the voice is inside this chapter. */
     tts: TtsState?,
+    /** Book-style turn between horizontal pages (Settings: Page turn effect). */
+    pageTurn: Boolean,
     following: Boolean,
     onFollowChange: (Boolean) -> Unit,
 ) {
@@ -637,12 +664,79 @@ private fun PagedReader(
         if (vertical) {
             VerticalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { pageContent(it) }
         } else {
-            HorizontalPager(state = pagerState, reverseLayout = reversed, modifier = Modifier.fillMaxSize()) {
-                pageContent(it)
+            HorizontalPager(
+                state = pagerState,
+                reverseLayout = reversed,
+                // The page underneath must already be composed while the top one turns over it.
+                beyondViewportPageCount = if (pageTurn) 1 else 0,
+                modifier = Modifier.fillMaxSize(),
+            ) { page ->
+                if (pageTurn) {
+                    Box(Modifier.fillMaxSize().pageTurn(pagerState, page, reversed, colors.background)) {
+                        pageContent(page)
+                    }
+                } else {
+                    pageContent(page)
+                }
             }
         }
     }
 }
+
+/**
+ * A book-style turn between horizontal pages: the page on top follows the finger with a shadow on its
+ * edge and a slight tilt, while the page it covers or uncovers stays in place, sinks a little and dims.
+ * [reversed] mirrors it for right-to-left pages.
+ */
+private fun Modifier.pageTurn(state: PagerState, page: Int, reversed: Boolean, background: Color): Modifier {
+    return graphicsLayer {
+        // > 0: the page under the turn (it stays put). < 0: the page on top (it slides as usual).
+        val offset = (state.currentPage - page) + state.currentPageOffsetFraction
+        val direction = if (reversed) -1f else 1f
+        if (offset > 0f) {
+            val depth = offset.coerceIn(0f, 1f)
+            translationX = depth * size.width * direction
+            scaleX = 1f - PAGE_TURN_SINK * depth
+            scaleY = 1f - PAGE_TURN_SINK * depth
+        } else {
+            val lift = (-offset).coerceIn(0f, 1f)
+            cameraDistance = 12f * density
+            transformOrigin = TransformOrigin(if (reversed) 0f else 1f, 0.5f)
+            rotationY = PAGE_TURN_TILT * lift * direction
+        }
+    }.drawWithContent {
+        val offset = (state.currentPage - page) + state.currentPageOffsetFraction
+        drawRect(background)
+        drawContent()
+        if (offset > 0f) {
+            // The covered page dims as the top page closes over it.
+            drawRect(Color.Black.copy(alpha = PAGE_TURN_DIM * offset.coerceIn(0f, 1f)))
+        } else if (offset < 0f) {
+            // Shadow cast by the turning page's leading edge onto the page below.
+            val shadow = PAGE_TURN_SHADOW.toPx()
+            val leftEdge = !reversed
+            val x = if (leftEdge) -shadow else size.width
+            drawRect(
+                brush = Brush.horizontalGradient(
+                    colors = if (leftEdge) {
+                        listOf(Color.Transparent, Color.Black.copy(alpha = 0.25f))
+                    } else {
+                        listOf(Color.Black.copy(alpha = 0.25f), Color.Transparent)
+                    },
+                    startX = x,
+                    endX = x + shadow,
+                ),
+                topLeft = Offset(x, 0f),
+                size = Size(shadow, size.height),
+            )
+        }
+    }
+}
+
+private const val PAGE_TURN_SINK = 0.05f
+private const val PAGE_TURN_DIM = 0.35f
+private const val PAGE_TURN_TILT = -14f
+private val PAGE_TURN_SHADOW = 18.dp
 
 private suspend fun PagerState.turn(forward: Boolean) {
     val target = (currentPage + if (forward) 1 else -1).coerceIn(0, pageCount - 1)
@@ -671,6 +765,12 @@ private fun Modifier.tapZones(
  * Glow behind the sentence being spoken and a stronger one behind the spoken word. All indexes are
  * in the whole paragraph; [localStart] is where this text starts inside it.
  */
+private const val SENTENCE_GLOW = 0.28f
+
+/** Closer than this to the middle and the list stays put, so tiny nudges don't jitter the text. */
+private const val CENTRE_TOLERANCE_PX = 24
+private const val WORD_GLOW = 0.5f
+
 private fun AnnotatedString.highlightSpoken(
     sentenceStart: Int,
     sentenceEnd: Int,
@@ -689,8 +789,8 @@ private fun AnnotatedString.highlightSpoken(
     val word = range(wordStart, wordEnd)
     if (sentence == null && word == null) return this
     return AnnotatedString.Builder(this).apply {
-        sentence?.let { addStyle(SpanStyle(background = color), it.first, it.last + 1) }
-        word?.let { addStyle(SpanStyle(background = color.copy(alpha = 0.4f)), it.first, it.last + 1) }
+        sentence?.let { addStyle(SpanStyle(background = color.copy(alpha = SENTENCE_GLOW)), it.first, it.last + 1) }
+        word?.let { addStyle(SpanStyle(background = color.copy(alpha = WORD_GLOW)), it.first, it.last + 1) }
     }.toAnnotatedString()
 }
 
@@ -705,9 +805,8 @@ private fun BlockText(
     wordStart: Int = -1,
     wordEnd: Int = -1,
 ) {
-    val glow = colors.text.copy(alpha = 0.28f)
     fun shown(text: AnnotatedString) = if (highlighted) {
-        text.highlightSpoken(spokenStart, spokenEnd, wordStart, wordEnd, 0, glow)
+        text.highlightSpoken(spokenStart, spokenEnd, wordStart, wordEnd, 0, colors.highlight)
     } else {
         text
     }
@@ -746,7 +845,7 @@ private fun SliceText(
             wordStart,
             wordEnd,
             slice.start,
-            colors.text.copy(alpha = 0.28f),
+            colors.highlight,
         )
     } else {
         slice.text
@@ -1199,6 +1298,9 @@ internal fun ColumnScope.NovelSettingsPage(preferences: ReaderPreferences) {
         onChange = { preferences.novelHorizontalMargin.set(it) },
         pillColor = MaterialTheme.colorScheme.surfaceContainerHighest,
     )
+    if (mode == NovelReadingMode.PAGED_LTR || mode == NovelReadingMode.PAGED_RTL) {
+        CheckboxItem(label = stringResource(MR.strings.novel_page_turn), pref = preferences.novelPageTurn)
+    }
     CheckboxItem(label = stringResource(MR.strings.novel_justify), pref = preferences.novelJustify)
     CheckboxItem(label = stringResource(MR.strings.novel_indent), pref = preferences.novelIndent)
 

@@ -91,4 +91,14 @@ Parse once into `List<Block>` (`Paragraph(text: AnnotatedString)`, `Heading(leve
   the next through `GetNextChapters` and keep going. Update `last_page_read` and history as
   blocks complete, so the reader reopens where the voice stopped.
 - Reader: Listen action in the reader menu, current block highlighted, tap a block to start there.
+- Follow rule, per reading mode (`NovelReaderContent`): the spoken sentence is glowed and the
+  spoken word glowed stronger, colour from `novelHighlight` (General tab). While following:
+
+  | Mode | Follow behaviour |
+  |------|------------------|
+  | Scroll | Every new sentence glides to the **middle of the screen**, inside tall paragraphs too (position estimated from the character range); list ends clamp it; under 24 px no move |
+  | Pages LTR, RTL, top to bottom | Turn to the page that holds the spoken sentence (exact, from the pagination slices); a page cannot be centred, so never scroll inside a page |
+
+  Any drag, tap-zone turn or volume key stops following; play, a TTS control, or the spoken
+  sentence being on screen again resumes it. Voice entering the next chapter opens it in the reader.
 - Never read aloud or log locked or paywalled text the user cannot see in the reader.

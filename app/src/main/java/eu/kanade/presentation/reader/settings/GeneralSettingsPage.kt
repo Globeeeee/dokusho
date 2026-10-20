@@ -27,6 +27,15 @@ private val themes = listOf(
     MR.strings.automatic_background to 3,
 )
 
+private val highlights = listOf(
+    MR.strings.novel_highlight_auto to ReaderPreferences.NovelHighlight.AUTO,
+    MR.strings.novel_highlight_yellow to ReaderPreferences.NovelHighlight.YELLOW,
+    MR.strings.novel_highlight_green to ReaderPreferences.NovelHighlight.GREEN,
+    MR.strings.novel_highlight_blue to ReaderPreferences.NovelHighlight.BLUE,
+    MR.strings.novel_highlight_pink to ReaderPreferences.NovelHighlight.PINK,
+    MR.strings.novel_highlight_orange to ReaderPreferences.NovelHighlight.ORANGE,
+)
+
 private val flashColors = listOf(
     MR.strings.pref_flash_style_black to ReaderPreferences.FlashColor.BLACK,
     MR.strings.pref_flash_style_white to ReaderPreferences.FlashColor.WHITE,
@@ -57,6 +66,19 @@ internal fun ColumnScope.GeneralPage(viewModel: ReaderSettingsViewModel) {
                 onClick = { viewModel.preferences.readerTheme.set(value) },
                 label = { Text(stringResource(labelRes)) },
             )
+        }
+    }
+
+    if (isNovel) {
+        val highlight by viewModel.preferences.novelHighlight.collectAsState()
+        SettingsChipRow(MR.strings.novel_highlight_color) {
+            highlights.map { (labelRes, value) ->
+                FilterChip(
+                    selected = highlight == value,
+                    onClick = { viewModel.preferences.novelHighlight.set(value) },
+                    label = { Text(stringResource(labelRes)) },
+                )
+            }
         }
     }
 

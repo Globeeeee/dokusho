@@ -104,6 +104,11 @@ object SettingsReaderScreen : SearchableSettings {
                     ),
                     title = stringResource(MR.strings.novel_reading_mode),
                 ),
+                Preference.PreferenceItem.SwitchPreference(
+                    preference = readerPreferences.novelPageTurn,
+                    title = stringResource(MR.strings.novel_page_turn),
+                    subtitle = stringResource(MR.strings.novel_page_turn_summary),
+                ),
                 Preference.PreferenceItem.ListPreference(
                     preference = readerPreferences.novelTheme,
                     entries = mapOf(

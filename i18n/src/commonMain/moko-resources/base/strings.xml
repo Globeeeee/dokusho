@@ -1209,6 +1209,15 @@
     <string name="tts_voice_change">Tap to choose a voice</string>
     <string name="tts_show_cover">Show novel cover</string>
     <string name="tts_show_cover_summary">Cover art in the media player, notification and lock screen while listening</string>
+    <string name="novel_highlight_color">Read-aloud highlight</string>
+    <string name="novel_page_turn">Page turn effect</string>
+    <string name="novel_page_turn_summary">Pages turn like a book in the left to right and right to left page modes</string>
+    <string name="novel_highlight_auto">Auto</string>
+    <string name="novel_highlight_yellow">Yellow</string>
+    <string name="novel_highlight_green">Green</string>
+    <string name="novel_highlight_blue">Blue</string>
+    <string name="novel_highlight_pink">Pink</string>
+    <string name="novel_highlight_orange">Orange</string>
     <string name="tts_system_default">System default</string>
     <string name="tts_supertonic">Supertonic</string>
     <string name="tts_supertonic_unavailable">Tap Supertonic to download it in the background (about 400 MB). Speech keeps using a system voice.</string>
