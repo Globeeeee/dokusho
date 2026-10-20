@@ -15,7 +15,7 @@ import tachiyomi.i18n.MR
 @Inject
 @SingleIn(AppScope::class)
 class ReaderPreferences(
-    preferenceStore: PreferenceStore,
+    private val preferenceStore: PreferenceStore,
 ) {
 
     // region General
@@ -326,6 +326,30 @@ class ReaderPreferences(
         preferenceStore.getEnum("pref_novel_reading_mode", NovelReadingMode.SCROLL)
 
     enum class NovelReadingMode { SCROLL, PAGED_LTR, PAGED_RTL, PAGED_VERTICAL }
+
+    /** Speech rate of the read-aloud playback, 1.0 is the engine's normal speed. */
+    val ttsSpeed: Preference<Float> = preferenceStore.getFloat("pref_tts_speed", 1f)
+
+    /** Voice pitch, 1.0 is the engine's normal pitch. */
+    val ttsPitch: Preference<Float> = preferenceStore.getFloat("pref_tts_pitch", 1f)
+
+    /**
+     * Read-aloud engine. Empty is the device default, a package name is a specific system engine,
+     * and [eu.kanade.tachiyomi.data.tts.TtsEngines.SUPERTONIC] is the neural voice (not downloaded).
+     */
+    val ttsEngine: Preference<String> = preferenceStore.getString("pref_tts_engine", "")
+
+    /** Voice name from the selected engine. Empty uses that engine's default voice. */
+    val ttsVoice: Preference<String> = preferenceStore.getString("pref_tts_voice", "")
+
+    /** The voice last chosen for [engineId], kept separately so switching engines does not forget it. */
+    fun ttsVoiceMemory(engineId: String): Preference<String> =
+        preferenceStore.getString(ttsVoiceMemoryKey(engineId), "")
+
+    private fun ttsVoiceMemoryKey(engineId: String): String {
+        val safe = engineId.ifBlank { "system" }.replace(Regex("[^A-Za-z0-9_]"), "_")
+        return "pref_tts_voice_for_$safe"
+    }
 
     companion object {
         const val WEBTOON_PADDING_MIN = 0

@@ -3,9 +3,12 @@ package eu.kanade.tachiyomi.ui.reader.viewer.novel
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.ComposeView
+import coil3.network.NetworkHeaders
 import dev.icerock.moko.resources.StringResource
 import eu.kanade.presentation.theme.TachiyomiTheme
 import eu.kanade.tachiyomi.ui.reader.ReaderActivity
@@ -34,7 +37,7 @@ class NovelViewer(val activity: ReaderActivity) : Viewer {
     private val scope = MainScope()
 
     private val chapters = MutableStateFlow<ViewerChapters?>(null)
-    private val jumps = MutableSharedFlow<Int>(extraBufferCapacity = 1)
+    private val jumps = MutableSharedFlow<ReaderPage>(extraBufferCapacity = 1)
     private val commands = MutableSharedFlow<NovelCommand>(extraBufferCapacity = 1)
 
     private val actions = object : NovelReaderActions {
@@ -70,15 +73,23 @@ class NovelViewer(val activity: ReaderActivity) : Viewer {
             TachiyomiTheme {
                 val current by chapters.collectAsState()
                 val menuVisible by activity.viewModel.state.collectAsState()
+                val imageHeaders = remember {
+                    val headers = activity.viewModel.getSource()?.headers
+                    NetworkHeaders.Builder()
+                        .apply { headers?.forEach { (name, value) -> add(name, value) } }
+                        .build()
+                }
                 current?.let {
-                    NovelReaderContent(
-                        chapters = it,
-                        preferences = readerPreferences,
-                        menuVisible = menuVisible.menuVisible,
-                        jumps = jumps,
-                        commands = commands,
-                        actions = actions,
-                    )
+                    CompositionLocalProvider(LocalNovelImageHeaders provides imageHeaders) {
+                        NovelReaderContent(
+                            chapters = it,
+                            preferences = readerPreferences,
+                            menuVisible = menuVisible.menuVisible,
+                            jumps = jumps,
+                            commands = commands,
+                            actions = actions,
+                        )
+                    }
                 }
             }
         }
@@ -95,7 +106,7 @@ class NovelViewer(val activity: ReaderActivity) : Viewer {
     }
 
     override fun moveToPage(page: ReaderPage) {
-        if (page.chapter == chapters.value?.currChapter) jumps.tryEmit(page.index)
+        if (page.chapter == chapters.value?.currChapter) jumps.tryEmit(page)
     }
 
     override fun handleKeyEvent(event: KeyEvent): Boolean {

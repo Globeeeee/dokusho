@@ -58,6 +58,7 @@ import eu.kanade.presentation.reader.settings.ReaderSettingsDialog
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.data.notification.NotificationReceiver
 import eu.kanade.tachiyomi.data.notification.Notifications
+import eu.kanade.tachiyomi.data.tts.TtsPlaybackService
 import eu.kanade.tachiyomi.databinding.ReaderActivityBinding
 import eu.kanade.tachiyomi.source.online.HttpSource
 import eu.kanade.tachiyomi.ui.base.activity.BaseActivity
@@ -517,12 +518,14 @@ class ReaderActivity : BaseActivity() {
             ),
             onClickOrientation = viewModel::openOrientationModeSelectDialog,
             cropEnabled = cropEnabled,
+            showCrop = !viewModel.isNovelSource(),
             onClickCropBorder = {
                 val enabled = viewModel.toggleCropBorders()
                 menuToggleToast?.cancel()
                 menuToggleToast = toast(if (enabled) MR.strings.on else MR.strings.off)
             },
             onClickSettings = viewModel::openSettingsDialog,
+            onClickListen = (::startListening).takeIf { viewModel.isNovelSource() },
         )
     }
 
@@ -615,6 +618,15 @@ class ReaderActivity : BaseActivity() {
         }
     }
 
+    /** Starts the background read-aloud service at the paragraph the reader is on. */
+    private fun startListening() {
+        val mangaId = viewModel.manga?.id ?: return
+        val chapterId = viewModel.state.value.currentChapter?.chapter?.id ?: return
+        val blockIndex = (viewModel.state.value.currentPage - 1).coerceAtLeast(0)
+        TtsPlaybackService.start(this, mangaId, chapterId, blockIndex)
+        setMenuVisibility(false)
+    }
+
     /** The bottom bar's reading-mode button steps through the novel modes for novel sources. */
     private fun cycleNovelReadingMode() {
         val modes = ReaderPreferences.NovelReadingMode.entries
@@ -697,6 +709,11 @@ class ReaderActivity : BaseActivity() {
         lifecycleScope.launch {
             viewModel.loadNextChapter()
             moveToPageIndex(0)
+            TtsPlaybackService.followReader(
+                this@ReaderActivity,
+                viewModel.manga?.id,
+                viewModel.state.value.currentChapter?.chapter?.id,
+            )
         }
     }
 
@@ -708,6 +725,11 @@ class ReaderActivity : BaseActivity() {
         lifecycleScope.launch {
             viewModel.loadPreviousChapter()
             moveToPageIndex(0)
+            TtsPlaybackService.followReader(
+                this@ReaderActivity,
+                viewModel.manga?.id,
+                viewModel.state.value.currentChapter?.chapter?.id,
+            )
         }
     }
 

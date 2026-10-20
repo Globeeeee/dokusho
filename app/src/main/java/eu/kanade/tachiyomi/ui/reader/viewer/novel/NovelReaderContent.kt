@@ -1,9 +1,11 @@
 package eu.kanade.tachiyomi.ui.reader.viewer.novel
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,11 +15,16 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -26,15 +33,18 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Slider
-import androidx.compose.material3.SmallFloatingActionButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -43,19 +53,26 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -68,18 +85,41 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import coil3.compose.LocalPlatformContext
+import coil3.network.NetworkHeaders
+import coil3.network.httpHeaders
+import coil3.request.ImageRequest
 import dev.icerock.moko.resources.StringResource
+import eu.kanade.tachiyomi.data.tts.TtsPlaybackService
+import eu.kanade.tachiyomi.data.tts.TtsState
+import eu.kanade.tachiyomi.data.tts.TtsStatus
 import eu.kanade.tachiyomi.ui.reader.loader.NovelPage
 import eu.kanade.tachiyomi.ui.reader.model.ReaderChapter
+import eu.kanade.tachiyomi.ui.reader.model.ReaderPage
 import eu.kanade.tachiyomi.ui.reader.model.ViewerChapters
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences.NovelFont
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences.NovelReadingMode
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences.NovelTheme
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withTimeoutOrNull
+import mihon.icons.materialsymbols.MaterialSymbols
+import mihon.icons.materialsymbols.rounded.Close
+import mihon.icons.materialsymbols.rounded.Schedule
+import mihon.icons.materialsymbols.rounded.Settings
+import mihon.icons.materialsymbols.rounded.SkipNext
+import mihon.icons.materialsymbols.rounded.SkipPrevious
+import mihon.icons.materialsymbols.roundedfilled.Pause
+import mihon.icons.materialsymbols.roundedfilled.PlayArrow
 import tachiyomi.core.common.preference.Preference
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.CheckboxItem
@@ -118,7 +158,7 @@ internal fun NovelReaderContent(
     chapters: ViewerChapters,
     preferences: ReaderPreferences,
     menuVisible: Boolean,
-    jumps: SharedFlow<Int>,
+    jumps: SharedFlow<ReaderPage>,
     commands: MutableSharedFlow<NovelCommand>,
     actions: NovelReaderActions,
 ) {
@@ -136,7 +176,7 @@ internal fun NovelReaderContent(
     val customText by preferences.novelTextColor.collectAsState()
     val readerTheme by preferences.readerTheme.collectAsState()
     val showPageNumber by preferences.showPageNumber.collectAsState()
-    var showSettings by rememberSaveable { mutableStateOf(false) }
+    var showTtsSettings by rememberSaveable { mutableStateOf(false) }
 
     val themeColors = theme.resolve(readerTheme, isSystemInDarkTheme()).colors()
     val colors = if (customColors) {
@@ -177,6 +217,23 @@ internal fun NovelReaderContent(
     val hasNext = chapters.nextChapter != null
     val hasPrevious = chapters.prevChapter != null
 
+    // Read-aloud session for this novel. The paragraph being spoken is highlighted. Taps keep the
+    // usual zones, so the middle of the screen still opens the reader menu while the voice plays.
+    val ttsState by TtsStatus.state.collectAsState()
+    val tts = ttsState?.takeIf { it.mangaId == chapter.chapter.mangaId }
+
+    // The reader follows the voice until the user scrolls or turns pages; play, resume, the
+    // read-aloud controls, or the spoken paragraph coming back on screen pick it up again.
+    var followTts by remember { mutableStateOf(true) }
+    LaunchedEffect(tts?.playing) {
+        if (tts?.playing == true) followTts = true
+    }
+    // The voice moved on to the next chapter: open it too, so the list or pages can keep up.
+    LaunchedEffect(tts?.chapterId) {
+        val current = tts?.takeIf { it.playing && followTts } ?: return@LaunchedEffect
+        if (current.chapterId == chapters.nextChapter?.chapter?.id) actions.onNextChapter()
+    }
+
     Box(
         Modifier
             .fillMaxSize()
@@ -185,32 +242,41 @@ internal fun NovelReaderContent(
         // Key on the chapter so scroll and pager state start fresh at the requested paragraph.
         if (mode == NovelReadingMode.SCROLL) {
             // Not keyed on the chapter: the list spans neighbouring chapters and keeps its position.
-            ContinuousScrollReader(chapters, styles, colors, margin, showPageNumber, jumps, commands, actions)
+            ContinuousScrollReader(
+                chapters, styles, colors, margin, showPageNumber, jumps, commands, actions, tts,
+                following = followTts,
+                onFollowChange = { followTts = it },
+            )
         } else {
             // Key on the chapter so the pager starts fresh at the requested paragraph.
             key(chapter, mode) {
                 val start = chapter.requestedPage.coerceIn(0, (blocks.size - 1).coerceAtLeast(0))
+                val chapterJumps = remember(chapter) { jumps.filter { it.chapter == chapter }.map { it.index } }
                 PagedReader(
-                    blocks, title, start, styles, colors, margin, mode, hasNext, hasPrevious, showPageNumber, jumps,
-                    commands, actions,
+                    blocks, title, start, styles, colors, margin, mode, hasNext, hasPrevious, showPageNumber,
+                    chapterJumps, commands, actions, tts?.takeIf { it.chapterId == chapter.chapter.id },
+                    following = followTts,
+                    onFollowChange = { followTts = it },
                 )
             }
         }
 
-        if (menuVisible) {
-            SmallFloatingActionButton(
-                onClick = { showSettings = true },
+        if (tts != null && !menuVisible) {
+            TtsControls(
+                tts = tts,
+                colors = colors,
+                onControl = { followTts = true },
+                onSettings = { showTtsSettings = true },
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 96.dp, end = 16.dp),
-            ) {
-                Text("Aa", fontWeight = FontWeight.Bold)
-            }
+                    .align(Alignment.BottomCenter)
+                    .windowInsetsPadding(WindowInsets.navigationBars)
+                    .padding(bottom = 24.dp),
+            )
         }
     }
 
-    if (showSettings) {
-        NovelSettingsSheet(preferences = preferences, onDismiss = { showSettings = false })
+    if (showTtsSettings) {
+        TtsSettingsSheet(preferences = preferences, onDismiss = { showTtsSettings = false })
     }
 }
 
@@ -256,16 +322,20 @@ private fun ContinuousScrollReader(
     colors: NovelColors,
     margin: Int,
     showPageNumber: Boolean,
-    jumps: SharedFlow<Int>,
+    jumps: SharedFlow<ReaderPage>,
     commands: MutableSharedFlow<NovelCommand>,
     actions: NovelReaderActions,
+    tts: TtsState?,
+    following: Boolean,
+    onFollowChange: (Boolean) -> Unit,
 ) {
-    // Rebuild when a neighbouring chapter finishes loading, not only when the chapter set changes.
-    val itemsFlow = remember(chapters) {
+    // Rebuilt right away for a new chapter set, so effects below never see the previous window,
+    // then again whenever a neighbouring chapter finishes loading.
+    var scrollItems by remember(chapters) { mutableStateOf(buildScrollItems(chapters)) }
+    LaunchedEffect(chapters) {
         val window = listOfNotNull(chapters.prevChapter, chapters.currChapter, chapters.nextChapter)
-        combine(window.map { it.stateFlow }) { buildScrollItems(chapters) }
+        combine(window.map { it.stateFlow }) { buildScrollItems(chapters) }.collect { scrollItems = it }
     }
-    val scrollItems by itemsFlow.collectAsState(initial = buildScrollItems(chapters))
     val currentItems by rememberUpdatedState(scrollItems)
     val currentChapters by rememberUpdatedState(chapters)
 
@@ -319,17 +389,55 @@ private fun ContinuousScrollReader(
         val visible = (currentItems.getOrNull(listState.firstVisibleItemIndex) as? BlockItem)?.chapter
             ?: (currentItems.getOrNull(listState.firstVisibleItemIndex) as? ChapterTitleItem)?.chapter
         if (visible != chapters.currChapter) {
+            // A jump, not reading on: the chapter being left must not be finished or made current again.
+            lastShown = null
             listState.scrollToItem(indexOfBlock(chapters.currChapter, chapters.currChapter.requestedPage))
         }
     }
     LaunchedEffect(listState) {
-        jumps.collect { listState.scrollToItem(indexOfBlock(currentChapters.currChapter, it)) }
+        // A jump can arrive before the list has the chapter it targets; wait for it briefly.
+        jumps.collectLatest { page ->
+            val index = withTimeoutOrNull(2_000) {
+                snapshotFlow {
+                    currentItems.indexOfFirst {
+                        it is BlockItem && it.chapter == page.chapter && it.index == page.index
+                    }
+                }.first { it >= 0 }
+            } ?: return@collectLatest
+            lastShown = null
+            listState.scrollToItem(index)
+        }
     }
     LaunchedEffect(listState) {
         commands.collect { command ->
+            if (tts?.playing == true) onFollowChange(false)
             val step = listState.layoutInfo.viewportSize.height * 0.85f
             listState.animateScrollBy(if (command == NovelCommand.Next) step else -step)
         }
+    }
+    LaunchedEffect(listState) {
+        listState.interactionSource.interactions.collect {
+            if (it is DragInteraction.Start) onFollowChange(false)
+        }
+    }
+    // Keep the paragraph being read aloud on screen while following.
+    LaunchedEffect(tts?.chapterId, tts?.blockIndex, tts?.playing, following, scrollItems) {
+        val current = tts?.takeIf { it.playing } ?: return@LaunchedEffect
+        val index = currentItems.indexOfFirst {
+            it is BlockItem && it.chapter.chapter.id == current.chapterId && it.index == current.blockIndex
+        }
+        if (index < 0) return@LaunchedEffect
+        val layout = listState.layoutInfo
+        val item = layout.visibleItemsInfo.firstOrNull { it.index == index }
+        if (!following) {
+            // The user scrolled back to the voice; follow it again from here.
+            if (item != null) onFollowChange(true)
+            return@LaunchedEffect
+        }
+        val fullyVisible = item != null &&
+            item.offset >= layout.viewportStartOffset &&
+            item.offset + item.size <= layout.viewportEndOffset
+        if (!fullyVisible) listState.animateScrollToItem(index)
     }
 
     Box(Modifier.fillMaxSize()) {
@@ -359,7 +467,18 @@ private fun ContinuousScrollReader(
                             modifier = Modifier.padding(bottom = 8.dp),
                         )
                     }
-                    is BlockItem -> BlockText(item.block, styles, colors)
+                    is BlockItem -> BlockText(
+                        block = item.block,
+                        styles = styles,
+                        colors = colors,
+                        highlighted = tts != null &&
+                            tts.chapterId == item.chapter.chapter.id &&
+                            tts.blockIndex == item.index,
+                        spokenStart = tts?.spokenStart ?: -1,
+                        spokenEnd = tts?.spokenEnd ?: -1,
+                        wordStart = tts?.wordStart ?: -1,
+                        wordEnd = tts?.wordEnd ?: -1,
+                    )
                     is TailItem -> Box(
                         Modifier
                             .fillMaxWidth()
@@ -399,9 +518,13 @@ private fun PagedReader(
     hasNext: Boolean,
     hasPrevious: Boolean,
     showPageNumber: Boolean,
-    jumps: SharedFlow<Int>,
+    jumps: Flow<Int>,
     commands: MutableSharedFlow<NovelCommand>,
     actions: NovelReaderActions,
+    /** Read-aloud state when the voice is inside this chapter. */
+    tts: TtsState?,
+    following: Boolean,
+    onFollowChange: (Boolean) -> Unit,
 ) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val density = LocalDensity.current
@@ -432,7 +555,30 @@ private fun PagedReader(
             }
         }
         LaunchedEffect(pagerState) {
-            commands.collect { command -> pagerState.turn(command == NovelCommand.Next) }
+            commands.collect { command ->
+                if (tts?.playing == true) onFollowChange(false)
+                pagerState.turn(command == NovelCommand.Next)
+            }
+        }
+        LaunchedEffect(pagerState) {
+            pagerState.interactionSource.interactions.collect {
+                if (it is DragInteraction.Start) onFollowChange(false)
+            }
+        }
+        // Turn pages along with the voice while following, to the page holding the spoken sentence.
+        LaunchedEffect(tts?.blockIndex, tts?.spokenStart, tts?.playing, following, pages) {
+            val current = tts?.takeIf { it.playing } ?: return@LaunchedEffect
+            val spoken = current.spokenStart.coerceAtLeast(0)
+            val target = pages.indexOfLast { page ->
+                page.slices.any { it.block == current.blockIndex && it.start <= spoken }
+            }.takeIf { it >= 0 }
+                ?: pages.indexOfFirst { it.lastBlock >= current.blockIndex }.takeIf { it >= 0 }
+                ?: return@LaunchedEffect
+            if (!following) {
+                if (target == pagerState.currentPage) onFollowChange(true)
+                return@LaunchedEffect
+            }
+            if (target != pagerState.currentPage) pagerState.animateScrollToPage(target)
         }
 
         val reversed = mode == NovelReadingMode.PAGED_RTL
@@ -459,7 +605,18 @@ private fun PagedReader(
                         ChapterEnd(colors, hasNext, hasPrevious, actions, Modifier.align(Alignment.Center))
                     } else {
                         Column(verticalArrangement = Arrangement.spacedBy(styles.spacing.dp)) {
-                            page.slices.forEach { slice -> SliceText(slice, styles, colors) }
+                            page.slices.forEach { slice ->
+                                SliceText(
+                                    slice = slice,
+                                    styles = styles,
+                                    colors = colors,
+                                    highlighted = tts != null && tts.blockIndex == slice.block,
+                                    spokenStart = tts?.spokenStart ?: -1,
+                                    spokenEnd = tts?.spokenEnd ?: -1,
+                                    wordStart = tts?.wordStart ?: -1,
+                                    wordEnd = tts?.wordEnd ?: -1,
+                                )
+                            }
                         }
                     }
                 }
@@ -508,17 +665,60 @@ private fun Modifier.tapZones(
     }
 }
 
+/**
+ * Glow behind the sentence being spoken and a stronger one behind the spoken word. All indexes are
+ * in the whole paragraph; [localStart] is where this text starts inside it.
+ */
+private fun AnnotatedString.highlightSpoken(
+    sentenceStart: Int,
+    sentenceEnd: Int,
+    wordStart: Int,
+    wordEnd: Int,
+    localStart: Int,
+    color: Color,
+): AnnotatedString {
+    fun range(start: Int, end: Int): IntRange? {
+        if (end <= start) return null
+        val from = (start - localStart).coerceIn(0, text.length)
+        val to = (end - localStart).coerceIn(from, text.length)
+        return if (to <= from) null else from until to
+    }
+    val sentence = range(sentenceStart, sentenceEnd)
+    val word = range(wordStart, wordEnd)
+    if (sentence == null && word == null) return this
+    return AnnotatedString.Builder(this).apply {
+        sentence?.let { addStyle(SpanStyle(background = color), it.first, it.last + 1) }
+        word?.let { addStyle(SpanStyle(background = color.copy(alpha = 0.4f)), it.first, it.last + 1) }
+    }.toAnnotatedString()
+}
+
 @Composable
-private fun BlockText(block: NovelBlock, styles: NovelStyles, colors: NovelColors) {
+private fun BlockText(
+    block: NovelBlock,
+    styles: NovelStyles,
+    colors: NovelColors,
+    highlighted: Boolean = false,
+    spokenStart: Int = -1,
+    spokenEnd: Int = -1,
+    wordStart: Int = -1,
+    wordEnd: Int = -1,
+) {
+    val glow = colors.text.copy(alpha = 0.28f)
+    fun shown(text: AnnotatedString) = if (highlighted) {
+        text.highlightSpoken(spokenStart, spokenEnd, wordStart, wordEnd, 0, glow)
+    } else {
+        text
+    }
     when (block) {
         NovelBlock.Divider -> HorizontalDivider(Modifier.padding(vertical = 8.dp), color = colors.muted)
-        is NovelBlock.Heading -> Text(block.text, style = styles.heading)
-        is NovelBlock.Quote -> Text(block.text, style = styles.quote)
-        is NovelBlock.Paragraph -> Text(block.text, style = styles.body)
-        is NovelBlock.Image -> AsyncImage(
-            model = block.url,
-            contentDescription = null,
+        is NovelBlock.Heading -> Text(shown(block.text), style = styles.heading)
+        is NovelBlock.Quote -> Text(shown(block.text), style = styles.quote)
+        is NovelBlock.Paragraph -> Text(shown(block.text), style = styles.body)
+        is NovelBlock.Image -> NovelImage(
+            url = block.url,
             contentScale = ContentScale.FillWidth,
+            placeholder = colors.muted.copy(alpha = 0.12f),
+            reserveHeight = true,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 8.dp),
@@ -527,20 +727,269 @@ private fun BlockText(block: NovelBlock, styles: NovelStyles, colors: NovelColor
 }
 
 @Composable
-private fun SliceText(slice: PageSlice, styles: NovelStyles, colors: NovelColors) {
+private fun SliceText(
+    slice: PageSlice,
+    styles: NovelStyles,
+    colors: NovelColors,
+    highlighted: Boolean = false,
+    spokenStart: Int = -1,
+    spokenEnd: Int = -1,
+    wordStart: Int = -1,
+    wordEnd: Int = -1,
+) {
+    val shown = if (highlighted) {
+        slice.text.highlightSpoken(
+            spokenStart,
+            spokenEnd,
+            wordStart,
+            wordEnd,
+            slice.start,
+            colors.text.copy(alpha = 0.28f),
+        )
+    } else {
+        slice.text
+    }
     when (slice.kind) {
         SliceKind.Divider -> HorizontalDivider(Modifier.padding(vertical = 8.dp), color = colors.muted)
-        SliceKind.Heading -> Text(slice.text, style = styles.heading)
-        SliceKind.Quote -> Text(slice.text, style = styles.quote)
-        SliceKind.Body -> Text(slice.text, style = styles.body)
-        SliceKind.Image -> AsyncImage(
-            model = slice.url,
-            contentDescription = null,
+        SliceKind.Heading -> Text(shown, style = styles.heading)
+        SliceKind.Quote -> Text(shown, style = styles.quote)
+        SliceKind.Body -> Text(shown, style = styles.body)
+        SliceKind.Image -> NovelImage(
+            url = slice.url,
             contentScale = ContentScale.Fit,
+            placeholder = colors.muted.copy(alpha = 0.12f),
+            reserveHeight = false,
             modifier = Modifier.fillMaxSize(),
         )
     }
 }
+
+/** The source's request headers (Referer, User-Agent); many image hosts refuse requests without them. */
+internal val LocalNovelImageHeaders = staticCompositionLocalOf { NetworkHeaders.EMPTY }
+
+/**
+ * A chapter image through the app's Coil loader (shared OkHttp client, memory and disk cache), sized
+ * to its slot. Until it loads, a tinted box holds its place so the text below does not jump.
+ */
+@Composable
+private fun NovelImage(
+    url: String?,
+    contentScale: ContentScale,
+    placeholder: Color,
+    reserveHeight: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalPlatformContext.current
+    val headers = LocalNovelImageHeaders.current
+    val request = remember(url, headers) {
+        ImageRequest.Builder(context).data(url).httpHeaders(headers).build()
+    }
+    var loaded by remember(url) { mutableStateOf(false) }
+    AsyncImage(
+        model = request,
+        contentDescription = null,
+        contentScale = contentScale,
+        onSuccess = { loaded = true },
+        modifier = if (loaded) {
+            modifier
+        } else {
+            modifier
+                .then(if (reserveHeight) Modifier.aspectRatio(4f / 3f) else Modifier)
+                .background(placeholder)
+        },
+    )
+}
+
+private val SLEEP_PRESETS = listOf(5, 15, 30, 45, 60)
+
+/**
+ * Floating controls for the read-aloud session: paragraph skips, play and pause, sleep timer,
+ * speed and stop. The bar uses the chapter colors. The notification mirrors the actions.
+ */
+@Composable
+private fun TtsControls(
+    tts: TtsState,
+    colors: NovelColors,
+    onSettings: () -> Unit,
+    modifier: Modifier = Modifier,
+    /** Any read-aloud control was used; the reader follows the voice again. */
+    onControl: () -> Unit = {},
+) {
+    val context = LocalContext.current
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var timerOpen by remember { mutableStateOf(false) }
+    val deadline = tts.sleepAtMillis
+    LaunchedEffect(deadline) {
+        if (deadline == null) return@LaunchedEffect
+        while (System.currentTimeMillis() < deadline) {
+            now = System.currentTimeMillis()
+            delay(1_000)
+        }
+        now = System.currentTimeMillis()
+    }
+    val remaining = deadline?.let { (it - now).coerceAtLeast(0L) }
+    val bar = lerp(colors.background, colors.text, 0.12f)
+    val icon = colors.text
+
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(32.dp),
+        color = bar,
+        contentColor = icon,
+        shadowElevation = 10.dp,
+        border = BorderStroke(1.dp, icon.copy(alpha = 0.2f)),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+        ) {
+            TtsIconButton(
+                onClick = {
+                    onControl()
+                    TtsPlaybackService.previousParagraph(context)
+                },
+                icon = MaterialSymbols.Rounded.SkipPrevious,
+                description = stringResource(MR.strings.tts_previous_paragraph),
+                tint = icon,
+            )
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(icon)
+                    .clickable(
+                        onClick = {
+                            onControl()
+                            TtsPlaybackService.playPause(context)
+                        },
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    if (tts.playing) {
+                        MaterialSymbols.RoundedFilled.Pause
+                    } else {
+                        MaterialSymbols.RoundedFilled.PlayArrow
+                    },
+                    contentDescription = stringResource(
+                        if (tts.playing) MR.strings.action_pause else MR.strings.action_resume,
+                    ),
+                    tint = colors.background,
+                    modifier = Modifier.size(26.dp),
+                )
+            }
+            TtsIconButton(
+                onClick = {
+                    onControl()
+                    TtsPlaybackService.nextParagraph(context)
+                },
+                icon = MaterialSymbols.Rounded.SkipNext,
+                description = stringResource(MR.strings.tts_next_paragraph),
+                tint = icon,
+            )
+            Box(
+                Modifier
+                    .padding(horizontal = 4.dp)
+                    .width(1.dp)
+                    .height(22.dp)
+                    .background(icon.copy(alpha = 0.25f)),
+            )
+            Box {
+                TextButton(
+                    onClick = { timerOpen = true },
+                    contentPadding = PaddingValues(horizontal = 8.dp),
+                ) {
+                    Icon(
+                        MaterialSymbols.Rounded.Schedule,
+                        contentDescription = stringResource(MR.strings.tts_sleep_timer),
+                        tint = if (remaining != null) icon else icon.copy(alpha = 0.7f),
+                        modifier = Modifier.size(20.dp),
+                    )
+                    if (remaining != null) {
+                        Text(
+                            formatRemaining(remaining),
+                            color = icon,
+                            style = MaterialTheme.typography.labelLarge,
+                            modifier = Modifier.padding(start = 4.dp),
+                        )
+                    }
+                }
+                DropdownMenu(
+                    expanded = timerOpen,
+                    onDismissRequest = { timerOpen = false },
+                    containerColor = bar,
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(MR.strings.tts_sleep_off), color = icon) },
+                        onClick = {
+                            timerOpen = false
+                            TtsPlaybackService.setSleepTimer(context, 0)
+                        },
+                    )
+                    SLEEP_PRESETS.forEach { minutes ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(stringResource(MR.strings.tts_sleep_minutes, minutes), color = icon)
+                            },
+                            onClick = {
+                                timerOpen = false
+                                TtsPlaybackService.setSleepTimer(context, minutes)
+                            },
+                        )
+                    }
+                }
+            }
+            TextButton(
+                onClick = {
+                    val steps = listOf(0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f, 2.5f)
+                    val next = steps.firstOrNull { it > tts.speed + 0.01f } ?: steps.first()
+                    TtsPlaybackService.setSpeed(context, next)
+                },
+                contentPadding = PaddingValues(horizontal = 8.dp),
+            ) {
+                Text(tts.speed.asSpeedLabel(), color = icon, style = MaterialTheme.typography.labelLarge)
+            }
+            TtsIconButton(
+                onClick = onSettings,
+                icon = MaterialSymbols.Rounded.Settings,
+                description = stringResource(MR.strings.tts_settings),
+                tint = icon,
+            )
+            TtsIconButton(
+                onClick = { TtsPlaybackService.stop(context) },
+                icon = MaterialSymbols.Rounded.Close,
+                description = stringResource(MR.strings.action_stop),
+                tint = icon,
+            )
+        }
+    }
+}
+
+@Composable
+private fun TtsIconButton(
+    onClick: () -> Unit,
+    icon: ImageVector,
+    description: String,
+    tint: Color,
+) {
+    IconButton(onClick = onClick, modifier = Modifier.size(40.dp)) {
+        Icon(icon, contentDescription = description, tint = tint, modifier = Modifier.size(22.dp))
+    }
+}
+
+private fun formatRemaining(ms: Long): String {
+    val total = (ms / 1000L).toInt().coerceAtLeast(0)
+    val minutes = total / 60
+    val seconds = total % 60
+    return if (minutes >= 60) {
+        "%d:%02d:%02d".format(minutes / 60, minutes % 60, seconds)
+    } else {
+        "%d:%02d".format(minutes, seconds)
+    }
+}
+
+private fun Float.asSpeedLabel(): String =
+    "%.2f".format(this).trimEnd('0').trimEnd('.', ',') + "×"
 
 @Composable
 private fun ChapterEnd(
@@ -577,6 +1026,8 @@ private data class PageSlice(
     val block: Int,
     val kind: SliceKind,
     val text: AnnotatedString,
+    /** Index of [text] inside the paragraph, so a sentence can be highlighted across a page break. */
+    val start: Int = 0,
     val url: String? = null,
 )
 
@@ -610,7 +1061,7 @@ private fun paginate(
     blocks.forEachIndexed { index, block ->
         if (block is NovelBlock.Image) {
             newPage()
-            current += PageSlice(index, SliceKind.Image, AnnotatedString(""), block.url)
+            current += PageSlice(index, SliceKind.Image, AnnotatedString(""), url = block.url)
             newPage()
             return@forEachIndexed
         }
@@ -627,11 +1078,12 @@ private fun paginate(
             else -> SliceKind.Body to styles.body
         }
         var remaining = block.text
+        var offset = 0
         while (remaining.isNotEmpty()) {
             val layout = measurer.measure(remaining, style, constraints = Constraints(maxWidth = widthPx))
             val available = heightPx - used
             if (layout.size.height <= available) {
-                current += PageSlice(index, kind, remaining)
+                current += PageSlice(index, kind, remaining, offset)
                 used += layout.size.height + spacingPx
                 break
             }
@@ -645,11 +1097,17 @@ private fun paginate(
                 fit = 1 // a single line taller than the page; show it anyway
             }
             val end = layout.getLineEnd(fit - 1, visibleEnd = false).coerceAtLeast(1)
-            current += PageSlice(index, kind, remaining.subSequence(0, end))
+            current += PageSlice(index, kind, remaining.subSequence(0, end), offset)
+            offset += end
             newPage()
             remaining = remaining.subSequence(end, remaining.length).let { rest ->
                 val skip = rest.text.indexOfFirst { !it.isWhitespace() }
-                if (skip < 0) AnnotatedString("") else rest.subSequence(skip, rest.length)
+                if (skip < 0) {
+                    AnnotatedString("")
+                } else {
+                    offset += skip
+                    rest.subSequence(skip, rest.length)
+                }
             }
         }
     }
@@ -659,24 +1117,7 @@ private fun paginate(
 
 // Settings
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun NovelSettingsSheet(preferences: ReaderPreferences, onDismiss: () -> Unit) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp)
-                .padding(bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(stringResource(MR.strings.novel_text_settings), style = MaterialTheme.typography.titleMedium)
-            NovelSettingsPage(preferences)
-        }
-    }
-}
-
-/** Novel reading options; also shown in the reader settings dialog's Reading mode tab. */
+/** Novel reading options; shown in the reader settings dialog's Reading mode tab. */
 @Composable
 internal fun ColumnScope.NovelSettingsPage(preferences: ReaderPreferences) {
     val fontSize by preferences.novelFontSize.collectAsState()
@@ -696,6 +1137,9 @@ internal fun ColumnScope.NovelSettingsPage(preferences: ReaderPreferences) {
             )
         }
     }
+
+    HeadingItem(MR.strings.tts_settings)
+    TtsSettingsContent(preferences)
 
     SettingsChipRow(MR.strings.novel_font) {
         listOf(

@@ -1,12 +1,23 @@
 package eu.kanade.presentation.more.settings.screen
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import eu.kanade.presentation.more.settings.Preference
+import eu.kanade.tachiyomi.data.tts.SupertonicDownload
+import eu.kanade.tachiyomi.data.tts.SupertonicDownloadState
+import eu.kanade.tachiyomi.data.tts.SupertonicModel
+import eu.kanade.tachiyomi.data.tts.SupertonicVoices
+import eu.kanade.tachiyomi.data.tts.TtsCatalog
+import eu.kanade.tachiyomi.data.tts.TtsEngines
+import eu.kanade.tachiyomi.data.tts.TtsPlaybackService
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderOrientation
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
 import eu.kanade.tachiyomi.ui.reader.setting.ReadingMode
@@ -65,6 +76,7 @@ object SettingsReaderScreen : SearchableSettings {
                 subtitle = stringResource(MR.strings.pref_load_ahead_only_over_wifi_summary),
             ),
             getNovelGroup(readerPreferences = readerPref),
+            getTtsGroup(readerPreferences = readerPref),
             getDisplayGroup(readerPreferences = readerPref),
             getEInkGroup(readerPreferences = readerPref),
             getReadingGroup(readerPreferences = readerPref),
@@ -122,6 +134,122 @@ object SettingsReaderScreen : SearchableSettings {
                     preference = readerPreferences.novelHorizontalMargin,
                     valueRange = 8..48 step 4,
                     title = stringResource(MR.strings.novel_margins),
+                ),
+            ),
+        )
+    }
+
+    @Composable
+    private fun getTtsGroup(readerPreferences: ReaderPreferences): Preference.PreferenceGroup {
+        val context = LocalContext.current
+        val engine by readerPreferences.ttsEngine.collectAsState()
+        val systemDefault = stringResource(MR.strings.tts_system_default)
+        val voiceDefault = stringResource(MR.strings.tts_voice_default)
+        val supertonic = stringResource(MR.strings.tts_supertonic)
+        val download by SupertonicDownload.state.collectAsState()
+        val supertonicLabel = when (val status = download) {
+            is SupertonicDownloadState.Running -> "$supertonic ${status.percent}%"
+            else -> supertonic
+        }
+        var engineEntries by remember {
+            mutableStateOf(mapOf(TtsEngines.SYSTEM to systemDefault, TtsEngines.SUPERTONIC to supertonicLabel))
+        }
+        var voiceEntries by remember { mutableStateOf(mapOf("" to voiceDefault)) }
+
+        LaunchedEffect(Unit) {
+            SupertonicDownload.bind(context)
+        }
+        LaunchedEffect(systemDefault, supertonicLabel) {
+            val installed = TtsCatalog(context).installedEngines()
+            engineEntries = buildMap {
+                put(TtsEngines.SYSTEM, systemDefault)
+                installed.forEach { (id, label) -> put(id, label) }
+                put(TtsEngines.SUPERTONIC, supertonicLabel)
+            }
+        }
+        LaunchedEffect(engine, voiceDefault) {
+            voiceEntries = if (TtsEngines.isSupertonic(engine)) {
+                SupertonicVoices.all.toMap()
+            } else {
+                buildMap {
+                    put("", voiceDefault)
+                    TtsCatalog(context).voices(TtsEngines.systemPackage(engine)).forEach { (id, label) ->
+                        put(id, label)
+                    }
+                }
+            }
+        }
+
+        val speeds = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f, 2.5f, 3f)
+        val pitches = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f)
+        return Preference.PreferenceGroup(
+            title = stringResource(MR.strings.tts_settings),
+            preferenceItems = listOf(
+                Preference.PreferenceItem.ListPreference(
+                    preference = readerPreferences.ttsEngine,
+                    entries = engineEntries,
+                    title = stringResource(MR.strings.tts_engine),
+                    subtitleProvider = { value, entries ->
+                        val name = entries[value] ?: value
+                        val detail = when (val status = download) {
+                            is SupertonicDownloadState.Running ->
+                                stringResource(MR.strings.tts_supertonic_progress, status.percent)
+                            SupertonicDownloadState.Queued -> stringResource(MR.strings.tts_supertonic_queued)
+                            SupertonicDownloadState.Ready -> stringResource(MR.strings.tts_supertonic_downloaded)
+                            SupertonicDownloadState.Failed -> stringResource(MR.strings.tts_supertonic_failed)
+                            SupertonicDownloadState.Idle -> null
+                        }
+                        if (detail == null) name else "$name · $detail"
+                    },
+                    onValueChanged = { value ->
+                        if (TtsEngines.isSupertonic(value) && !SupertonicModel.isReady(context)) {
+                            SupertonicDownload.onSelected(context)
+                            false
+                        } else {
+                            val previous = readerPreferences.ttsEngine.get()
+                            if (previous != value) {
+                                readerPreferences.ttsVoiceMemory(previous).set(readerPreferences.ttsVoice.get())
+                            }
+                            readerPreferences.ttsEngine.set(value)
+                            val remembered = readerPreferences.ttsVoiceMemory(value).get().ifEmpty {
+                                if (TtsEngines.isSupertonic(value)) SupertonicVoices.DEFAULT else ""
+                            }
+                            readerPreferences.ttsVoice.set(remembered)
+                            readerPreferences.ttsVoiceMemory(value).set(remembered)
+                            TtsPlaybackService.applySettings(context)
+                            true
+                        }
+                    },
+                ),
+                Preference.PreferenceItem.ListPreference(
+                    preference = readerPreferences.ttsVoice,
+                    entries = voiceEntries,
+                    title = stringResource(MR.strings.tts_voice),
+                    onValueChanged = { value ->
+                        readerPreferences.ttsVoiceMemory(readerPreferences.ttsEngine.get()).set(value)
+                        TtsPlaybackService.applySettings(context)
+                        true
+                    },
+                ),
+                Preference.PreferenceItem.ListPreference(
+                    preference = readerPreferences.ttsSpeed,
+                    entries = speeds.associateWith { it.asRate() },
+                    title = stringResource(MR.strings.tts_speed_label),
+                    subtitleProvider = { value, entries -> entries[value] ?: value.asRate() },
+                    onValueChanged = {
+                        TtsPlaybackService.applySettings(context)
+                        true
+                    },
+                ),
+                Preference.PreferenceItem.ListPreference(
+                    preference = readerPreferences.ttsPitch,
+                    entries = pitches.associateWith { it.asRate() },
+                    title = stringResource(MR.strings.tts_pitch),
+                    subtitleProvider = { value, entries -> entries[value] ?: value.asRate() },
+                    onValueChanged = {
+                        TtsPlaybackService.applySettings(context)
+                        true
+                    },
                 ),
             ),
         )
@@ -484,4 +612,6 @@ object SettingsReaderScreen : SearchableSettings {
             ),
         )
     }
+
+    private fun Float.asRate(): String = "%.2f".format(this).trimEnd('0').trimEnd('.', ',') + "×"
 }

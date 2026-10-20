@@ -14,6 +14,7 @@ import mihon.icons.custommaterialsymbols.CustomMaterialSymbols
 import mihon.icons.custommaterialsymbols.rounded.CropOff
 import mihon.icons.materialsymbols.MaterialSymbols
 import mihon.icons.materialsymbols.rounded.Crop
+import mihon.icons.materialsymbols.rounded.Headphones
 import mihon.icons.materialsymbols.rounded.Settings
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.i18n.stringResource
@@ -26,8 +27,12 @@ fun ReaderBottomBar(
     onClickOrientation: () -> Unit,
     cropEnabled: Boolean,
     onClickCropBorder: () -> Unit,
+    /** Novels have no page borders to trim, so the crop button stays off that reader. */
+    showCrop: Boolean = true,
     onClickSettings: () -> Unit,
     modifier: Modifier = Modifier,
+    /** Starts reading the chapter aloud; non-null only for novel sources. */
+    onClickListen: (() -> Unit)? = null,
 ) {
     Row(
         modifier = modifier
@@ -49,11 +54,26 @@ fun ReaderBottomBar(
             )
         }
 
-        IconButton(onClick = onClickCropBorder) {
-            Icon(
-                imageVector = if (cropEnabled) MaterialSymbols.Rounded.Crop else CustomMaterialSymbols.Rounded.CropOff,
-                contentDescription = stringResource(MR.strings.pref_crop_borders),
-            )
+        if (showCrop) {
+            IconButton(onClick = onClickCropBorder) {
+                Icon(
+                    imageVector = if (cropEnabled) {
+                        MaterialSymbols.Rounded.Crop
+                    } else {
+                        CustomMaterialSymbols.Rounded.CropOff
+                    },
+                    contentDescription = stringResource(MR.strings.pref_crop_borders),
+                )
+            }
+        }
+
+        if (onClickListen != null) {
+            IconButton(onClick = onClickListen) {
+                Icon(
+                    imageVector = MaterialSymbols.Rounded.Headphones,
+                    contentDescription = stringResource(MR.strings.tts_listen),
+                )
+            }
         }
 
         IconButton(onClick = onClickSettings) {

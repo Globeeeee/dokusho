@@ -251,6 +251,8 @@ dependencies {
     implementation(libs.androidx.coreSplashScreen)
     implementation(libs.androidx.recyclerView)
     implementation(libs.androidx.viewPager)
+    // MediaSessionCompat and the MediaStyle notification for the TTS playback service
+    implementation(libs.androidx.media)
     implementation(libs.androidx.profileInstaller)
 
     implementation(libs.bundles.androidx.lifecycle)
@@ -264,6 +266,7 @@ dependencies {
     // Networking
     implementation(libs.bundles.okhttp)
     implementation(libs.okio)
+    implementation(libs.onnxruntime)
     implementation(libs.conscrypt) // TLS 1.3 support for Android < 10
 
     // Data serialization (JSON, protobuf, xml)

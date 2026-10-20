@@ -54,7 +54,7 @@ object NovelHtml {
     }
 
     fun parse(html: String): List<NovelBlock> {
-        val body = Jsoup.parseBodyFragment(Jsoup.clean(html, safelist)).body()
+        val body = Jsoup.parseBodyFragment(Jsoup.clean(withLazyImages(html), safelist)).body()
         val blocks = mutableListOf<NovelBlock>()
         collect(body, blocks)
         return blocks
@@ -65,6 +65,9 @@ object NovelHtml {
         fun flushLoose() {
             if (loose.isEmpty()) return
             inline(loose).takeIf { it.isNotBlank() }?.let { out += NovelBlock.Paragraph(it) }
+            // Images wrapped in inline tags (<em><img></em>) still get their own blocks.
+            loose.filterIsInstance<Element>().flatMap { it.select("img[src]") }
+                .forEach { out += NovelBlock.Image(it.attr("src")) }
             loose.clear()
         }
         for (node in parent.childNodes()) {
@@ -125,6 +128,19 @@ object NovelHtml {
     }
 
     private fun AnnotatedString.isNotBlank() = text.isNotBlank()
+
+    /** Sites that lazy-load keep the real image in a data attribute and a placeholder in src. */
+    private fun withLazyImages(html: String): String {
+        if (!html.contains("<img") || LAZY_SRC.none { html.contains(it) }) return html
+        val document = Jsoup.parseBodyFragment(html)
+        document.select("img").forEach { image ->
+            LAZY_SRC.firstNotNullOfOrNull { name -> image.absUrl(name).ifBlank { image.attr(name) }.ifBlank { null } }
+                ?.let { image.attr("src", it) }
+        }
+        return document.body().html()
+    }
+
+    private val LAZY_SRC = listOf("data-src", "data-original", "data-lazy-src")
 
     private val WHITESPACE = Regex("\\s+")
 }

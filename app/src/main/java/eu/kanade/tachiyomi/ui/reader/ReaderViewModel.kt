@@ -34,6 +34,11 @@ import eu.kanade.tachiyomi.data.download.model.Download
 import eu.kanade.tachiyomi.data.saver.Image
 import eu.kanade.tachiyomi.data.saver.ImageSaver
 import eu.kanade.tachiyomi.data.saver.Location
+import eu.kanade.tachiyomi.data.tts.SupertonicModel
+import eu.kanade.tachiyomi.data.tts.SupertonicRuntime
+import eu.kanade.tachiyomi.data.tts.TtsEngines
+import eu.kanade.tachiyomi.data.tts.TtsStatus
+import eu.kanade.tachiyomi.data.tts.speakableBlocks
 import eu.kanade.tachiyomi.source.NovelSource
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.model.Page
@@ -41,6 +46,7 @@ import eu.kanade.tachiyomi.source.online.HttpSource
 import eu.kanade.tachiyomi.ui.reader.loader.ChapterLoader
 import eu.kanade.tachiyomi.ui.reader.loader.DownloadPageLoader
 import eu.kanade.tachiyomi.ui.reader.loader.HttpPageLoader
+import eu.kanade.tachiyomi.ui.reader.loader.NovelPage
 import eu.kanade.tachiyomi.ui.reader.loader.NovelPageLoader
 import eu.kanade.tachiyomi.ui.reader.model.InsertPage
 import eu.kanade.tachiyomi.ui.reader.model.ReaderChapter
@@ -50,6 +56,7 @@ import eu.kanade.tachiyomi.ui.reader.setting.ReaderOrientation
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
 import eu.kanade.tachiyomi.ui.reader.setting.ReadingMode
 import eu.kanade.tachiyomi.ui.reader.viewer.Viewer
+import eu.kanade.tachiyomi.ui.reader.viewer.novel.NovelBlock
 import eu.kanade.tachiyomi.util.chapter.filterDownloaded
 import eu.kanade.tachiyomi.util.chapter.removeDuplicates
 import eu.kanade.tachiyomi.util.editCover
@@ -314,6 +321,7 @@ class ReaderViewModel(
                     currentChapter.requestedPage = currentChapter.chapter.lastPageRead
                 }
                 chapterId = currentChapter.chapter.id
+                warmSupertonic(currentChapter)
             }
             .launchIn(viewModelScope)
 
@@ -409,7 +417,33 @@ class ReaderViewModel(
                 )
             }
         }
+        warmSupertonic(newChapters.currChapter)
         return newChapters
+    }
+
+    /**
+     * Loads the voice as soon as the chapter is on screen, and synthesizes from the paragraph
+     * the reader will open on. Listen then starts on audio that is already built.
+     */
+    private fun warmSupertonic(chapter: ReaderChapter) {
+        if (state.value.source !is NovelSource) return
+        if (!TtsEngines.isSupertonic(readerPreferences.ttsEngine.get())) return
+        if (!SupertonicModel.isReady(context)) return
+        SupertonicRuntime.warm(context)
+        // A read-aloud session owns the queue; don't replace the chapter it is playing.
+        if (TtsStatus.state.value != null) return
+        val start = chapter.requestedPage.coerceAtLeast(0)
+        // Same text the voice will ask for, so the clips it finds here are cache hits.
+        val blocks = chapter.pages.orEmpty().map { (it as? NovelPage)?.block ?: NovelBlock.Divider }
+        val texts = speakableBlocks(blocks).filter { it.first >= start }.map { it.second.spoken }
+        if (texts.isEmpty()) return
+        SupertonicRuntime.plan(
+            context,
+            readerPreferences.ttsVoice.get(),
+            readerPreferences.ttsSpeed.get(),
+            texts,
+            emptyList(),
+        )
     }
 
     /**

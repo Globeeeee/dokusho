@@ -76,6 +76,8 @@ androidComponents {
                     "rounded/more_vert",
                     "rounded/refresh",
                     "rounded/share",
+                    "rounded/skip_next",
+                    "rounded/skip_previous",
                     "roundedFilled/extension",
                     "roundedFilled/folder",
                     "roundedFilled/pause",

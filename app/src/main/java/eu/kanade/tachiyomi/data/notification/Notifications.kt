@@ -66,6 +66,14 @@ object Notifications {
     const val ID_INCOGNITO_MODE = -701
 
     /**
+     * Notification channel and id used by the read-aloud (TTS) playback service.
+     */
+    const val CHANNEL_TTS = "tts_channel"
+    const val ID_TTS = -801
+    const val ID_SUPERTONIC_DOWNLOAD = -802
+    const val ID_SUPERTONIC_DOWNLOAD_DONE = -803
+
+    /**
      * Notification channel and ids used for extension updates.
      */
     private const val GROUP_APK_UPDATES = "group_apk_updates"
@@ -156,6 +164,10 @@ object Notifications {
                 },
                 buildNotificationChannel(CHANNEL_INCOGNITO_MODE, IMPORTANCE_LOW) {
                     setName(context.stringResource(MR.strings.pref_incognito_mode))
+                },
+                buildNotificationChannel(CHANNEL_TTS, IMPORTANCE_LOW) {
+                    setName(context.stringResource(MR.strings.channel_tts))
+                    setShowBadge(false)
                 },
                 buildNotificationChannel(CHANNEL_EXTENSIONS_UPDATE, IMPORTANCE_DEFAULT) {
                     setGroup(GROUP_APK_UPDATES)

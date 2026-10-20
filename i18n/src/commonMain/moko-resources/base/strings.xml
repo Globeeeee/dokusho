@@ -1181,4 +1181,35 @@
     <string name="novel_mode_paged_rtl">Pages, right to left</string>
     <string name="novel_mode_paged_vertical">Pages, top to bottom</string>
     <string name="novel_end_of_chapter">End of chapter</string>
+
+    <!-- Read aloud (TTS) -->
+    <string name="channel_tts">Read aloud</string>
+    <string name="tts_listen">Listen</string>
+    <string name="tts_preparing">Preparing to read aloud…</string>
+    <string name="tts_notification_title">Read aloud</string>
+    <string name="tts_nothing_to_read">Nothing to read aloud in this chapter</string>
+    <string name="tts_engine_unavailable">No text-to-speech engine is available on this device</string>
+    <string name="tts_previous_paragraph">Previous paragraph</string>
+    <string name="tts_next_paragraph">Next paragraph</string>
+    <string name="tts_sleep_timer">Sleep timer</string>
+    <string name="tts_sleep_in">Sleep in %1$d min</string>
+    <string name="tts_sleep_off">Sleep off</string>
+    <string name="tts_sleep_minutes">%1$d min</string>
+    <string name="tts_speed">Speed %1$s×</string>
+    <string name="tts_speed_label">Speed</string>
+    <string name="tts_pitch">Pitch</string>
+    <string name="tts_engine">Engine</string>
+    <string name="tts_voice">Voice</string>
+    <string name="tts_voice_default">Default</string>
+    <string name="tts_system_default">System default</string>
+    <string name="tts_supertonic">Supertonic</string>
+    <string name="tts_supertonic_unavailable">Tap Supertonic to download it in the background (about 400 MB). Speech keeps using a system voice.</string>
+    <string name="tts_supertonic_queued">Supertonic will download in the background when a network is available.</string>
+    <string name="tts_supertonic_downloading">Downloading Supertonic…</string>
+    <string name="tts_supertonic_progress">Downloading Supertonic… %1$d%%</string>
+    <string name="tts_supertonic_downloaded">Supertonic is ready to read aloud.</string>
+    <string name="tts_supertonic_failed">Couldn’t download Supertonic. Tap to try again.</string>
+    <string name="tts_supertonic_notification">Downloading Supertonic</string>
+    <string name="tts_settings">Read aloud settings</string>
+    <string name="action_stop">Stop</string>
 </resources>
