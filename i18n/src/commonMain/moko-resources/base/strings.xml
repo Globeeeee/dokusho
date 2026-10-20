@@ -1201,6 +1201,10 @@
     <string name="tts_engine">Engine</string>
     <string name="tts_voice">Voice</string>
     <string name="tts_voice_default">Default</string>
+    <string name="tts_voice_numbered">Voice %1$d</string>
+    <string name="tts_voice_online">Online</string>
+    <string name="tts_voice_hd">HD</string>
+    <string name="tts_voice_change">Tap to choose a voice</string>
     <string name="tts_system_default">System default</string>
     <string name="tts_supertonic">Supertonic</string>
     <string name="tts_supertonic_unavailable">Tap Supertonic to download it in the background (about 400 MB). Speech keeps using a system voice.</string>

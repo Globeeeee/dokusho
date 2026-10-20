@@ -3,20 +3,15 @@ package eu.kanade.tachiyomi.ui.reader.viewer.novel
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -37,7 +32,6 @@ import eu.kanade.tachiyomi.data.tts.TtsPlaybackService
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.HeadingItem
-import tachiyomi.presentation.core.components.RadioItem
 import tachiyomi.presentation.core.components.SettingsChipRow
 import tachiyomi.presentation.core.components.SettingsItemsPaddings
 import tachiyomi.presentation.core.components.SliderItem
@@ -159,53 +153,21 @@ internal fun TtsSettingsContent(preferences: ReaderPreferences) {
         }
     } else {
         HeadingItem(MR.strings.tts_voice)
-        val voiceLabel = voices.firstOrNull { it.first == voice }?.second
-            ?: stringResource(MR.strings.tts_voice_default)
-        TextButton(
-            onClick = { pickingVoice = true },
-            modifier = Modifier.padding(horizontal = 12.dp),
-        ) {
-            Text(voiceLabel)
-        }
+        val current = voices.firstOrNull { it.first == voice }?.let { VoiceLabel.of(it.second) }
+        VoiceCard(current, onClick = { pickingVoice = true })
     }
 
     if (pickingVoice && !supertonic) {
-        AlertDialog(
-            onDismissRequest = { pickingVoice = false },
-            title = { Text(stringResource(MR.strings.tts_voice)) },
-            text = {
-                LazyColumn(Modifier.height(360.dp).fillMaxWidth()) {
-                    item {
-                        RadioItem(
-                            label = stringResource(MR.strings.tts_voice_default),
-                            selected = voice.isEmpty(),
-                            onClick = {
-                                preferences.ttsVoice.set("")
-                                preferences.ttsVoiceMemory(engine).set("")
-                                TtsPlaybackService.applySettings(context)
-                                pickingVoice = false
-                            },
-                        )
-                    }
-                    items(voices, key = { it.first }) { (id, label) ->
-                        RadioItem(
-                            label = label,
-                            selected = voice == id,
-                            onClick = {
-                                preferences.ttsVoice.set(id)
-                                preferences.ttsVoiceMemory(engine).set(id)
-                                TtsPlaybackService.applySettings(context)
-                                pickingVoice = false
-                            },
-                        )
-                    }
-                }
+        VoicePickerDialog(
+            voices = voices,
+            selected = voice,
+            onSelect = { id ->
+                preferences.ttsVoice.set(id)
+                preferences.ttsVoiceMemory(engine).set(id)
+                TtsPlaybackService.applySettings(context)
+                pickingVoice = false
             },
-            confirmButton = {
-                TextButton(onClick = { pickingVoice = false }) {
-                    Text(stringResource(MR.strings.action_cancel))
-                }
-            },
+            onDismiss = { pickingVoice = false },
         )
     }
 
