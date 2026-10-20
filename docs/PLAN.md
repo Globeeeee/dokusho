@@ -4,20 +4,20 @@ Web novel reader for Android, built on Mihon. Reads novels from public sites thr
 installable extensions, downloads them for offline reading, exports EPUB and PDF, and reads
 aloud in the background.
 
-Status (2026-10-21): phases 0 to 3 done and confirmed on device. Phase 4: 21 extensions built and
-published; AO3, SpaceBattles, Sufficient Velocity, FanFiction.net, FictionPress and Webnovel in
-progress. Phase 6 TTS built for v0.1.6 (device done-when check pending). Phase 5 export in
-progress for v0.1.7. Next: phase 7 polish (novel local source, wording), see its list.
+Status (2026-10-21): phases 0 to 3 done and confirmed on device. Phase 4: 27 extensions built
+(AO3, SpaceBattles, Sufficient Velocity, FanFiction.net, FictionPress and Webnovel added for
+v0.1.7, device checks pending). Phase 6 TTS released in v0.1.6. Phase 5 export built for v0.1.7.
+Next: device checks, then phase 7 polish (novel local source, wording), see its list.
 
 | Phase                      | State                                                                     |
 | -------------------------- | ------------------------------------------------------------------------- |
 | 0. Build green and branded | done                                                                      |
 | 1. Text source contract    | done, confirmed on device                                                 |
 | 2. Reader                  | done, confirmed on device (v0.1.5)                                        |
-| 3. Offline downloads       | done, confirmed on device (v0.1.5); stuck-download fix in progress        |
-| 4. First extensions        | 21 built and published; AO3, forums, FanFiction.net, Webnovel in progress |
-| 5. Export EPUB and PDF     | in progress (v0.1.7)                                                      |
-| 6. Background TTS          | built in v0.1.6; screen-off and phone-call check pending                  |
+| 3. Offline downloads       | done, confirmed on device (v0.1.5); stuck-download fix in v0.1.7          |
+| 4. First extensions        | 27 built; AO3, forums, FanFiction.net, Webnovel new, device check pending |
+| 5. Export EPUB and PDF     | built for v0.1.7; device check pending                                    |
+| 6. Background TTS          | released in v0.1.6; screen-off and phone-call check pending               |
 | 7. Polish and release      | release pipeline and help guides done; open items below                   |
 
 ## Decisions taken
@@ -125,6 +125,8 @@ Design detail for each row: `.claude/rules/novel.md`.
 - [x] Download index recognises the folders (downloaded badge) with no change; the reader opens downloaded chapters from disk and resolves local images
 - [x] Delete-after-read works on the folder; download-ahead also counts a novel chapter read from disk
 - [x] Done when: downloaded chapters open in airplane mode and show the downloaded badge. Verified by Qasim on a Pixel 9 Pro XL with v0.1.5 (2026-10-20).
+- [x] v0.1.7: downloads no longer stick at loading: a failed chapter no longer blocks new ones, the queue waits for an allowed network and starts on its own, a Cloudflare check fails the chapter instead of waiting minutes in the background, retries start from a clean folder
+- [ ] Device check: download from Browse, from the library and from Updates, offline then online, Wi-Fi only on mobile data
 
 ### 4. First extensions (3 days, then ongoing)
 
@@ -134,8 +136,9 @@ Detail and site list in `dokusho-extensions-source/docs/PLAN.md`.
 - [x] Scribble Hub: built and pushed for publishing (2.0.1)
 - [x] Wattpad and WuxiaWorld (official, free chapters; locked ones marked) built and pushed for publishing
 - [x] 2026-10-21: 21 extensions built and published after a full audit (shared sanitiser, chapter dates, WuxiaWorld login token for the user's own unlocked chapters); list in the extensions plan
-- [ ] Archive of Our Own, SpaceBattles, Sufficient Velocity, FanFiction.net, FictionPress: in progress
-- [ ] Webnovel with the user's own login, locked chapters stay locked: in progress
+- [x] Archive of Our Own, SpaceBattles and Sufficient Velocity (XenForo theme), FanFiction.net and FictionPress (shared theme) built for v0.1.7; selectors checked live or through the Wayback Machine, device check pending
+- [x] Webnovel built: chapter list from the server-rendered catalog page, text from the official content API, locked chapters stay locked, no decryption
+- [ ] Webnovel device check with the user's login: do unlocked paid chapters come back readable or encrypted? If encrypted, paid Webnovel chapters cannot be read in Dokusho
 - [x] Publish pipeline: extension key and secrets, CI builds, signs and writes `index.pb` and `index.json`; fixed the stub variant and the PKCS12 key password on the way
 - [x] `index.pb` loads in the app and lists Royal Road (seen on v0.1.0)
 
@@ -143,13 +146,15 @@ MVP = phases 0 to 4, roughly 3 weeks.
 
 ### 5. Export EPUB and PDF (4 days)
 
-- `ExportWorker` (foreground, dataSync) with progress notification and cancel.
-- EPUB 3: `mimetype` stored first, `container.xml`, OPF, nav, one XHTML per chapter, CSS, cover from Coil cache.
-- PDF: `PdfDocument`, A5, `StaticLayout` pagination, chapter headings, page numbers.
-- UI: novel menu "Export" sheet: format, range (all, downloaded, from-to), split; defaults from settings.
-- Missing chapters fetched during export when "download missing" is on, honouring the source rate limit.
-- Output to `<storage root>/exports/<Title>/` through SAF.
-- Done when: a 300-chapter novel exports to one EPUB that opens in another reader and to three PDFs.
+- [x] `ExportWorker` (foreground, dataSync, channel `CHANNEL_EXPORT`) with progress notification, cancel action, and Open and Share on the finished files; skipped chapters (locked, not downloaded, failed) listed in the result.
+- [x] EPUB 3: `mimetype` stored first with no extra field, `container.xml`, OPF (stable `urn:dokusho:<source>:<url hash>`), `nav.xhtml` and `toc.ncx`, one `chNNNN.xhtml` per chapter from the reader's block parser, CSS, cover from the cover cache or Coil disk cache, images from the download folder or caches. Written with `java.util.zip`, not `ZipWriter`: libarchive adds extra fields that move the `mimetype` bytes off the offset strict readers check.
+- [x] PDF: `PdfDocument`, A5, `StaticLayout` pagination, chapter headings, page numbers, images downsampled to the text width.
+- [x] UI: novel menu "Export" sheet: format, range (all, downloaded, from-to), split, download missing; defaults from settings (Data and storage, Novel export).
+- [x] Settings: "Export novels" lists library novels (search, select one, several or all) and exports them one after another with the same options.
+- [x] Missing chapters fetched during export when "download missing" is on, through the source's own client and rate limit; locked chapters never exported.
+- [x] Output to `<storage root>/exports/<Title>/` through SAF, files `<Title> - ch0001-0100.epub`.
+- [x] Unit tests: EPUB package (mimetype first and stored, OPF manifest and spine, nav, XHTML escaping), range, split and file names.
+- [ ] Done when: a 300-chapter novel exports to one EPUB that opens in another reader and to three PDFs. Built, device check pending.
 
 ### 6. Background TTS (1 week)
 
@@ -161,6 +166,7 @@ MVP = phases 0 to 4, roughly 3 weeks.
 - Done when: playback continues with the screen off for a full chapter and survives a phone call.
 
 - [x] Built in v0.1.6: `TtsEngine` with Android TTS and Supertonic (on-demand model download), `TtsPlaybackService` (mediaPlayback, MediaSession, notification controls, audio focus, wake lock, sleep timer), auto-advance to the next chapter, word highlight and auto-scroll, voice picker
+- [x] v0.1.7: novel cover in the media player, notification and lock screen (Settings, Reader, Show novel cover)
 - [ ] Done-when check on device: a full chapter with the screen off, and a phone call in the middle
 
 ### Later (not scheduled)
