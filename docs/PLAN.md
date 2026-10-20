@@ -4,8 +4,20 @@ Web novel reader for Android, built on Mihon. Reads novels from public sites thr
 installable extensions, downloads them for offline reading, exports EPUB and PDF, and reads
 aloud in the background.
 
-Status (2026-10-19): repos created and pushed, Mihon-only files removed, Claude Code config
-in place. Phase 0 done and released as v0.1.0. Phase 1 done (text contract, Royal Road published). Phase 2 reader shipped in v0.1.1 (versionCode 3; code 2 was a deleted v0.2.0 release).
+Status (2026-10-20): phase 0 and phase 1 done. Phase 2 reader built and released as v0.1.1
+(versionCode 3; code 2 belonged to a withdrawn v0.2.0). Royal Road extension published to the
+store. Next: device test of v0.1.1, then phase 3 (offline downloads) and Scribble Hub.
+
+| Phase | State |
+|-------|-------|
+| 0. Build green and branded | done |
+| 1. Text source contract | done (device check of Royal Road loading in v0.1.1 pending) |
+| 2. Reader | mostly done, see open items |
+| 3. Offline downloads | not started |
+| 4. First extensions | Royal Road published, Scribble Hub recon done |
+| 5. Export EPUB and PDF | not started |
+| 6. Background TTS | not started |
+| 7. Polish and release | release pipeline done early |
 
 ## Decisions taken
 
@@ -23,6 +35,11 @@ in place. Phase 0 done and released as v0.1.0. Phase 1 done (text contract, Roya
 | Paid sites | Webnovel and WuxiaWorld through the user's own login, locked chapters stay locked | No paywall bypass |
 | Telemetry | Firebase Crashlytics and Analytics in CI and GitHub release builds, project under Qasim's Google account; FOSS and local builds have none. Config via `GOOGLE_SERVICES_JSON` secret, never committed | Qasim asked for his own Firebase; crash reports matter for a scraping app |
 | Updater | On for release builds, reads GitHub releases of `Globeeeee/dokusho` | Free update channel without a store |
+| Sources | Only sites that publish chapters with the author's or publisher's consent: author platforms (Royal Road, Scribble Hub) and official sites through the user's own login (Webnovel, WuxiaWorld). Sites that republish paid chapters without permission are not built | Decided 2026-10-20; keeps the extension repo clean |
+| Releases | Pushing a `vX.Y.Z` tag builds, signs and publishes APKs; `versionCode` only ever goes up. Process in `RELEASING.md` | One command per release, no manual uploads |
+| Signing | Two PKCS12 keys, app and extensions, kept only in `~/.dokusho/signing/` and GitHub secrets; one password per key | Separate keys limit the damage of a leak |
+| Secrets | `docs/SECRETS.md`: never in git, chat or logs; pre-commit guard, gitleaks in CI, agent permission denies | Asked for on 2026-10-19 |
+| Name | Kept "Dokusho" for now although `dokushoapp/dokusho` (a desktop manga reader) and `dokusho.app` exist | Personal use first; revisit before any public listing |
 | JDK | 21, Android Studio's bundled JBR locally (`.claude/settings.local.json`), Temurin 21 in CI | Metro Gradle plugin 1.4.5 refuses JDK 17 |
 
 ## Repos
@@ -44,17 +61,17 @@ storage manager · i18n (moko) · backup (metadata only) · CI build and test st
 
 ## What must change for text
 
-| Subsystem | Today | Change |
-|-----------|-------|--------|
-| `source-api` | `Page` is image only | Add `NovelSource` + `ChapterContent(html)`; `HttpNovelSource` with request/parse hooks; lib version 2.0; feature `dokusho.extension`, meta keys `dokusho.extension.*` |
-| `ExtensionLoader` | `SUPPORTED_LIB_VERSIONS = [1.4, 1.6]`, `tachiyomi.*` keys | `[2.0]`, new keys. Everything else in the loader stays |
-| Reader | Pager, webtoon and WebGPU image viewers | `NovelViewer` (Compose), `NovelChapterLoader`, typography settings, progress = paragraph index in `last_page_read` |
-| `ChapterCache` | Page-list JSON + image files | Chapter HTML keyed by chapter URL |
-| Downloader, DownloadProvider, DownloadCache, DownloadPageLoader | Image files or CBZ, success = image count | `chapter.html` + `meta.json`, success = non-empty file |
-| `LocalSource`, `core:archive` | EPUB images only | EPUB text spine import; `.txt` and `.html` folders |
-| Export | CSV library export only | New `ExportWorker`, EPUB via `ZipWriter`, PDF via `PdfDocument` |
-| Media | None | `TtsPlaybackService` foreground `mediaPlayback`, MediaSession, notification channel |
-| Branding | `app.mihon`, Mihon strings, release guard on `mihonapp/mihon` | `app.dokusho`, strings, icon, workflow guard, updater and telemetry off |
+| Subsystem | Mihon had | Change | Done |
+|-----------|-----------|--------|------|
+| `source-api` | `Page` is image only | `NovelSource` + `ChapterContent(html, title, locked)`; `HttpNovelSource`; lib 2.0 | ✅ |
+| `ExtensionLoader` | `SUPPORTED_LIB_VERSIONS = [1.4, 1.6]`, `tachiyomi.*` keys | `[2.0]`, `dokusho.*` keys | ✅ |
+| Reader | Pager, webtoon and WebGPU image viewers | `NovelViewer` (Compose), `NovelPageLoader`, text settings, progress = paragraph index | ✅ |
+| `ChapterCache` | Page-list JSON + image files | Chapter HTML keyed by chapter URL | ⬜ chapters are fetched on every open |
+| Downloader, DownloadProvider, DownloadCache, DownloadPageLoader | Image files or CBZ | `chapter.html` + `meta.json` | ⬜ phase 3 |
+| `LocalSource`, `core:archive` | EPUB images only | EPUB text spine import; `.txt` and `.html` | ⬜ phase 7 |
+| Export | CSV library export only | `ExportWorker`, EPUB via `ZipWriter`, PDF via `PdfDocument` | ⬜ phase 5 |
+| Media | None | `TtsPlaybackService`, MediaSession | ⬜ phase 6 |
+| Branding | `app.mihon`, Mihon strings and links | `app.dokusho`, strings, icon, workflows, updater | ✅ except 7 help links to mihon.app |
 
 Design detail for each row: `.claude/rules/novel.md`.
 
@@ -71,28 +88,30 @@ Design detail for each row: `.claude/rules/novel.md`.
 - [x] Trackers switched off for personal use (no tracker UI); setup moved to Later
 - [x] Mihon's donation popup and "Support us" menu hidden; its strings left untouched on purpose since they describe Mihon's own campaign
 - [x] Package `eu.kanade.tachiyomi` kept on purpose (verified 2026-10-20): extension class names depend on it
+- [x] Added beyond the original list: app release key and secrets, release pipeline, v0.1.0 published and its signature checked, `RELEASING.md`, `docs/SECRETS.md`, gitleaks CI, pre-commit guard, README Download and Add extensions sections, inherited upstream tags removed locally (`remote.upstream.tagOpt --no-tags`)
 - Done when: debug APK installs, opens, an extension repo URL can be added. **Met 2026-10-19**: v0.1.0 installed on Qasim's phone and the Dokusho extension store added (Royal Road listed).
 
 ### 1. Text source contract (2 days)
 - [x] `NovelSource` (standalone interface), `ChapterContent(html, title, locked)`, `HttpNovelSource` in `source-api`, proguard keeps
 - [x] Loader: feature `dokusho.extension`, `dokusho.*` meta-data, `SUPPORTED_LIB_VERSIONS = [2.0]`
 - [x] App calls `getChapterContent` for `NovelSource` (`NovelPageLoader`, shipped with the reader in v0.1.1)
-- `source-api`: `NovelSource`, `ChapterContent`, `HttpNovelSource`; `getPageList` returns empty for novel sources.
-- Loader constants and lib version; `consumer-proguard.pro` keeps.
-- Extension repo: `:extensions-lib` stub module mirroring the new API, `libVersion = "2.0"`, generated manifest emits `dokusho.*` keys, `DokushoSource` gains `getChapterContent`.
-- Done when: a hello-world extension built from the extension repo installs and lists in the app.
+- [x] Extension repo: `:extensions-lib` stub module, lib 2.0 toolchain, `DokushoSource` implements `NovelSource`, novel template in `ext-bootstrap.py` (details in its plan)
+- [x] Royal Road built, signed and published to the store index
+- [ ] Done when: an extension installs from the store and lists in the app. Store listing confirmed on v0.1.0; loading and browsing to be confirmed on v0.1.1.
 
 ### 2. Reader (1 week)
 - [x] `NovelPageLoader`: chapter HTML → safelist → blocks, one reader page per paragraph (progress = paragraph index)
 - [x] `NovelViewer` (Compose): reading modes Scroll, Pages left to right, Pages right to left, Pages top to bottom; tap zones; volume keys; end-of-chapter next/previous; locked chapters shown as a message
 - [x] Text settings sheet (Aa): font size, line spacing, margins, themes paper/sepia/dark/black
-- [ ] Font family choice, keep-screen-on toggle in the sheet, images inside chapters
-- `NovelChapterLoader` → cache → `List<Block>` parsed with jsoup from sanitized HTML.
-- `NovelViewer`: LazyColumn, tap zones, volume-key scroll, progress bar, chapter transitions reuse `ChapterTransition`.
-- Settings: font family, size, line height, paragraph spacing, margins, themes (paper, sepia, dark, black), keep screen on, fullscreen.
-- Progress: first visible paragraph index into `last_page_read`; mark read at 95 percent.
-- Hide image actions (save, share, set cover, crop, split) for novel sources.
-- Done when: a 3,000-word chapter scrolls smoothly, position restores, next chapter preloads.
+- [x] Progress: first visible paragraph into `last_page_read`, position restored on reopen; chapter marked read when its last paragraph is reached (not at 95 percent; the end of a chapter is the clearer signal)
+- [x] Next chapter preloads at 60 percent; Next and Previous chapter buttons at the chapter end (own end screen instead of `ChapterTransition`)
+- [x] Keep screen on and fullscreen: Mihon's existing reader settings apply to the novel viewer unchanged
+- [x] Released in v0.1.1
+- [ ] Font family choice (only serif today)
+- [ ] Images inside chapters (dropped by the safelist today)
+- [ ] Cache chapter text in `ChapterCache` so reopening a chapter is instant and works briefly offline
+- [ ] Hide image-only reader settings (crop borders, color filter, page layout) for novel sources; the image long-press menu already never opens
+- [ ] Done when: a 3,000-word chapter scrolls smoothly, position restores, next chapter preloads. Needs Qasim's device test of v0.1.1.
 
 ### 3. Offline downloads (3 days)
 - Downloader branch for `NovelSource`: fetch content, write `chapter.html` + `meta.json`.
@@ -101,11 +120,12 @@ Design detail for each row: `.claude/rules/novel.md`.
 
 ### 4. First extensions (3 days, then ongoing)
 Detail and site list in `dokusho-extensions-source/docs/PLAN.md`.
-- Batch 1: RoyalRoad, ScribbleHub (clean public HTML).
-- Batch 2: shadowslave.space, freewebnovel.com, novellive.com, wuxiaworld.eu, readnovelfull.com, novelhi.com, noveltrust.com (candidates from a web search on 2026-10-19; verify each is live and has usable HTML before building). Several run WordPress themes, so a `madara-novel` multisrc theme should cover more than one.
-- Batch 3: Webnovel and WuxiaWorld with WebView login, cookie reuse, locked chapters shown as locked.
-- Publish: signing keystore + secrets, `publish-repo.py` already points at `Globeeeee/dokusho-extensions`.
-- Done when: `index.pb` loads in the app and one extension installs from it.
+- [x] Royal Road: published (2.0.1)
+- [ ] Scribble Hub: recon done (25 cards per listing page via headless Chrome), extension next
+- [ ] Webnovel and WuxiaWorld (official): WebView login, cookie reuse, locked chapters shown as locked
+- [x] Publish pipeline: extension key and secrets, CI builds, signs and writes `index.pb` and `index.json`; fixed the stub variant and the PKCS12 key password on the way
+- [x] `index.pb` loads in the app and lists Royal Road (seen on v0.1.0)
+- Not building: shadowslave.space, freewebnovel.com, novellive.com, wuxiaworld.eu, readnovelfull.com, novelhi.com, noveltrust.com and similar, which republish paid chapters without permission (decision 2026-10-20, see Decisions).
 
 MVP = phases 0 to 4, roughly 3 weeks.
 
@@ -130,12 +150,13 @@ MVP = phases 0 to 4, roughly 3 weeks.
 - Trackers: register Dokusho OAuth clients on AniList and MyAnimeList with `dokusho://anilist-auth` and `dokusho://myanimelist-auth` redirects, put the ids in CI secrets, set `TrackerManager.trackers` back to `listOf(aniList, myAnimeList)`. Remove or replace the Mihon-registered client credentials still embedded for Hikka, Bangumi, Kitsu, Shikimori and Suwayomi.
 - MangaUpdates tracker (covers LOTM and Reverend Insanity as Novel, not Shadow Slave): needs only a free account, no OAuth registration; enable with `listOf(mangaUpdates)` in `TrackerManager.trackers`. NovelUpdates has no public API.
 - Import from a tracker list: read the user's MangaUpdates (or AniList) list, search each title across installed extensions, add matches to the library. Revisit when trackers come back; until then library and progress stay local only.
-- Public release: store listing, F-Droid, translations.
+- Public release: store listing, F-Droid, translations. Settle the name first (see Decisions).
+- Replace the 7 help links that still open mihon.app docs (onboarding guide, troubleshooting, storage FAQ, source migration, tracking guide, Cloudflare tip, bulk update warning) with a Dokusho help page.
 
 ### 7. Polish and release
 - Strings: English `base` first ("manga" to "novel"); other locales fall back where untranslated.
 - Local import: EPUB and TXT folders into `LocalSource`.
-- Release workflow on `v*` tags, keystore secrets, GitHub Releases. F-Droid later.
+- [x] Release workflow on `v*` tags, keystore secrets, GitHub Releases (done in phase 0; v0.1.0 and v0.1.1 published). F-Droid later.
 
 ## Risks
 
