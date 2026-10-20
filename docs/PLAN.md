@@ -76,7 +76,7 @@ Design detail for each row: `.claude/rules/novel.md`.
 ### 1. Text source contract (2 days)
 - [x] `NovelSource` (standalone interface), `ChapterContent(html, title, locked)`, `HttpNovelSource` in `source-api`, proguard keeps
 - [x] Loader: feature `dokusho.extension`, `dokusho.*` meta-data, `SUPPORTED_LIB_VERSIONS = [2.0]`
-- [ ] App calls `getChapterContent` for `NovelSource` (lands with the reader, phase 2)
+- [x] App calls `getChapterContent` for `NovelSource` (`NovelPageLoader`, shipped with the reader in v0.1.1)
 - `source-api`: `NovelSource`, `ChapterContent`, `HttpNovelSource`; `getPageList` returns empty for novel sources.
 - Loader constants and lib version; `consumer-proguard.pro` keeps.
 - Extension repo: `:extensions-lib` stub module mirroring the new API, `libVersion = "2.0"`, generated manifest emits `dokusho.*` keys, `DokushoSource` gains `getChapterContent`.
