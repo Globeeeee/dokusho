@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ServiceInfo
+import android.graphics.Bitmap
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
@@ -22,6 +23,10 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.getSystemService
+import coil3.asDrawable
+import coil3.imageLoader
+import coil3.request.ImageRequest
+import coil3.request.allowHardware
 import dev.zacsweers.metro.Inject
 import eu.kanade.domain.chapter.model.toSChapter
 import eu.kanade.domain.source.interactor.GetIncognitoState
@@ -34,6 +39,7 @@ import eu.kanade.tachiyomi.source.NovelSource
 import eu.kanade.tachiyomi.ui.reader.ReaderActivity
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
 import eu.kanade.tachiyomi.ui.reader.viewer.novel.NovelHtml
+import eu.kanade.tachiyomi.util.system.getBitmapOrNull
 import eu.kanade.tachiyomi.util.system.notificationBuilder
 import eu.kanade.tachiyomi.util.system.notify
 import eu.kanade.tachiyomi.util.system.toast
@@ -45,6 +51,9 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import logcat.LogPriority
@@ -97,6 +106,10 @@ class TtsPlaybackService : Service() {
     @Inject lateinit var getIncognitoState: GetIncognitoState
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
+    private var cover: Bitmap? = null
+    private var coverFor: Long? = null
+    private var coverJob: Job? = null
     private lateinit var engine: TtsEngine
     private var engineId: String? = null
     private lateinit var mediaSession: MediaSessionCompat
@@ -224,6 +237,13 @@ class TtsPlaybackService : Service() {
             IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY),
             ContextCompat.RECEIVER_NOT_EXPORTED,
         )
+        readerPreferences.ttsShowCover.changes()
+            .drop(1)
+            .onEach {
+                coverFor = null
+                updateMetadata()
+            }
+            .launchIn(scope)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -726,12 +746,51 @@ class TtsPlaybackService : Service() {
     }
 
     private fun updateMetadata() {
+        publishMetadata()
+        loadCover()
+    }
+
+    private fun publishMetadata() {
         mediaSession.setMetadata(
             MediaMetadataCompat.Builder()
                 .putString(MediaMetadataCompat.METADATA_KEY_TITLE, chapter?.name)
                 .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, manga?.title)
+                .apply { cover?.let { putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, it) } }
                 .build(),
         )
+    }
+
+    /** Fetches the novel cover once per novel, through the app's image loader and its cover cache. */
+    private fun loadCover() {
+        val current = manga
+        if (current == null || !readerPreferences.ttsShowCover.get()) {
+            if (cover != null || coverFor != null) {
+                cover = null
+                coverFor = null
+                coverJob?.cancel()
+                refreshCover()
+            }
+            return
+        }
+        if (coverFor == current.id) return
+        coverFor = current.id
+        coverJob?.cancel()
+        coverJob = scope.launch {
+            val request = ImageRequest.Builder(this@TtsPlaybackService)
+                .data(current)
+                .size(COVER_SIZE)
+                .allowHardware(false)
+                .build()
+            val bitmap = imageLoader.execute(request).image?.asDrawable(resources)?.getBitmapOrNull()
+            if (manga?.id != current.id) return@launch
+            cover = bitmap
+            refreshCover()
+        }
+    }
+
+    private fun refreshCover() {
+        publishMetadata()
+        if (TtsStatus.state.value != null) updateNotification()
     }
 
     private fun updateNotification() {
@@ -742,6 +801,7 @@ class TtsPlaybackService : Service() {
         setSmallIcon(R.drawable.ic_dokusho)
         setContentTitle(chapter?.name ?: stringResource(MR.strings.tts_notification_title))
         setContentText(text ?: manga?.title)
+        setLargeIcon(cover)
         setOngoing(playing)
         setShowWhen(false)
         setSilent(true)
@@ -861,6 +921,8 @@ class TtsPlaybackService : Service() {
     }
 
     companion object {
+        private const val COVER_SIZE = 512
+
         private const val ACTION_START = "eu.kanade.tachiyomi.TTS_START"
         private const val ACTION_PLAY_PAUSE = "eu.kanade.tachiyomi.TTS_PLAY_PAUSE"
         private const val ACTION_PLAY = "eu.kanade.tachiyomi.TTS_PLAY"

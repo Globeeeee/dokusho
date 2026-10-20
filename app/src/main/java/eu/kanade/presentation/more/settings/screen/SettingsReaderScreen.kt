@@ -251,6 +251,11 @@ object SettingsReaderScreen : SearchableSettings {
                         true
                     },
                 ),
+                Preference.PreferenceItem.SwitchPreference(
+                    preference = readerPreferences.ttsShowCover,
+                    title = stringResource(MR.strings.tts_show_cover),
+                    subtitle = stringResource(MR.strings.tts_show_cover_summary),
+                ),
             ),
         )
     }

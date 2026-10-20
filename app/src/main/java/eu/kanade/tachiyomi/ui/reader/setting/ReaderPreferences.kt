@@ -333,6 +333,8 @@ class ReaderPreferences(
     /** Voice pitch, 1.0 is the engine's normal pitch. */
     val ttsPitch: Preference<Float> = preferenceStore.getFloat("pref_tts_pitch", 1f)
 
+    val ttsShowCover: Preference<Boolean> = preferenceStore.getBoolean("pref_tts_show_cover", true)
+
     /**
      * Read-aloud engine. Empty is the device default, a package name is a specific system engine,
      * and [eu.kanade.tachiyomi.data.tts.TtsEngines.SUPERTONIC] is the neural voice (not downloaded).
