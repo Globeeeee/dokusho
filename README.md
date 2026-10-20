@@ -59,6 +59,8 @@ Available extensions:
 | Scribble Hub | scribblehub.com | published |
 | Wattpad | wattpad.com | published |
 | WuxiaWorld | wuxiaworld.com (official) | published; locked chapters marked 🔒 |
+| Project Gutenberg | gutenberg.org | published |
+| Syosetu (小説家になろう) | ncode.syosetu.com, Japanese | published |
 | Webnovel | official site, with your own login | planned |
 | Archive of Our Own | archiveofourown.org | next, once the site is reachable |
 
