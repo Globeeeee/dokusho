@@ -1,12 +1,23 @@
 # How a release works
 
 This page explains, in plain words, how a new version of Dokusho gets from your laptop to
-an APK people can download from GitHub.
+an APK people can download from GitHub, and how extensions get published.
+
+## Releases so far
+
+| Version | versionCode | Date | What it had | State |
+|---------|-------------|------|-------------|-------|
+| v0.1.0 | 1 | 2026-10-19 | Rebranded Mihon base, icon, release pipeline. Cannot read novels | published |
+| v0.2.0 | 2 | 2026-10-20 | Novel reader | **withdrawn** the same day, replaced by v0.1.1 |
+| v0.1.1 | 3 | 2026-10-20 | Novel reader with four reading modes, lib 2.0 extensions (Royal Road) | **latest** |
+
+**Next release: `versionCode = 4`.** Code 2 is used up by the withdrawn v0.2.0 and can never
+be reused, so the codes skip a number. That is fine; Android only cares that each one is bigger.
 
 ## The short version
 
 1. You change the version number in the code.
-2. You put a **tag** on that commit, like `v0.2.0`, and push it.
+2. You put a **tag** on that commit, like `v0.1.2`, and push it.
 3. GitHub sees the tag and builds the app by itself.
 4. A few minutes later a new **Release** page appears with the APK files.
 5. The README's Download badge and the app's update checker now point to it.
@@ -15,7 +26,7 @@ You never build or upload the APK yourself.
 
 ## What is a tag?
 
-A tag is a name sticker on one commit. `v0.2.0` means "this exact commit is version 0.2.0".
+A tag is a name sticker on one commit. `v0.1.2` means "this exact commit is version 0.1.2".
 Normal pushes to `main` do **not** make a release. Only pushing a tag that starts with `v`
 does.
 
@@ -26,8 +37,8 @@ does.
 Open `app/build.gradle.kts` and change both numbers:
 
 ```kotlin
-versionCode = 2          // goes up by 1 every release, never reused
-versionName = "0.2.0"    // what people see
+versionCode = 4          // bigger than every code used before (see Releases so far), never reused
+versionName = "0.1.2"    // what people see
 ```
 
 `versionCode` is for Android: a phone only installs an update when this number is bigger.
@@ -37,7 +48,7 @@ versionName = "0.2.0"    // what people see
 
 ```bash
 git add app/build.gradle.kts
-git commit -m "Release 0.2.0"
+git commit -m "Release 0.1.2"
 git push origin main
 ```
 
@@ -47,11 +58,16 @@ that first; a broken build makes a broken release.
 ### 3. Tag and push the tag
 
 ```bash
-git tag -a v0.2.0 -m "Dokusho 0.2.0"
-git push origin v0.2.0
+git tag -a v0.1.2 -m "Dokusho 0.1.2"
+git push origin v0.1.2
 ```
 
 This is the button that starts the release.
+
+Push **only that one tag**. Never run `git push --tags`: the clone used to carry over 100 old
+Mihon and Tachiyomi tags (one was even called `v0.1.0`), and pushing them would flood the
+release page. They were deleted locally and `git fetch upstream` no longer brings them back
+(`remote.upstream.tagOpt` is `--no-tags`).
 
 ### 4. Watch it build
 
@@ -71,13 +87,53 @@ The release appears at https://github.com/Globeeeee/dokusho/releases. Files on i
 
 | File | Who should install it |
 |------|-----------------------|
-| `dokusho-v0.2.0.apk` | anyone not sure which to pick (works on every phone, bigger) |
-| `dokusho-arm64-v8a-v0.2.0.apk` | almost every modern phone (smaller) |
-| `dokusho-armeabi-v7a-v0.2.0.apk` | very old 32-bit phones |
-| `dokusho-x86-v0.2.0.apk`, `dokusho-x86_64-v0.2.0.apk` | emulators and a few tablets |
-| `dokusho-v0.2.0-foss.apk` | people who want no Firebase and no update checks |
+| `dokusho-v0.1.2.apk` | anyone not sure which to pick (works on every phone, bigger) |
+| `dokusho-arm64-v8a-v0.1.2.apk` | almost every modern phone (smaller) |
+| `dokusho-armeabi-v7a-v0.1.2.apk` | very old 32-bit phones |
+| `dokusho-x86-v0.1.2.apk`, `dokusho-x86_64-v0.1.2.apk` | emulators and a few tablets |
+| `dokusho-v0.1.2-foss.apk` | people who want no Firebase and no update checks |
 
-Phones that already have Dokusho see "update available" the next time the app checks.
+Phones that already have Dokusho see "update available" the next time the app checks. The
+check compares **version names**, so a phone that installed the withdrawn v0.2.0 thinks
+v0.1.1 is older and will not offer it; install that one from the release page by hand.
+
+### 6. Check the signature (optional, 1 minute)
+
+Proves the published APK was signed with your key and not a debug key:
+
+```bash
+gh release download v0.1.2 --repo Globeeeee/dokusho --pattern 'dokusho-arm64-v8a-*.apk'
+~/Library/Android/sdk/build-tools/36.1.0/apksigner verify --print-certs dokusho-arm64-v8a-v0.1.2.apk | grep SHA-256
+cat ~/.dokusho/signing/dokusho-app.fingerprint     # must be the same value
+```
+
+## Withdrawing a release
+
+If a release should not exist (wrong name, broken build), delete it and publish a new one
+with the **next** `versionCode`. This is what happened to v0.2.0:
+
+```bash
+gh release delete v0.2.0 --repo Globeeeee/dokusho --yes --cleanup-tag   # release and remote tag
+git tag -d v0.2.0                                                          # local tag
+# set versionName and a NEW versionCode in app/build.gradle.kts, commit, push, tag, push the tag
+```
+
+Never reuse the withdrawn `versionCode`: someone may already have that build installed.
+
+## How extensions are released
+
+Extensions do not use tags. Every push to `main` of `dokusho-extensions-source` builds the
+extensions that changed, signs them with the **extension key** and publishes them:
+
+1. Change an extension under `src/<lang>/<name>/` and raise its `versionCode` in that
+   module's `build.gradle.kts` (the version shown becomes `2.0.<versionCode>`).
+2. Commit and push to `main`.
+3. GitHub → `dokusho-extensions-source` → Actions → **CI** builds and signs it, uploads the APK
+   to the Releases of `dokusho-extensions`, and rewrites `index.pb` there.
+4. Phones see the update in Dokusho under **Browse → Extensions**.
+
+Published so far: Royal Road 2.0.1. The store URL people paste into the app is in the README.
+
 
 ## Keys and secrets
 
@@ -213,7 +269,8 @@ secret than a signing key (it ships inside the APK), but keep it out of the repo
 
 ### How to make the bot token
 
-Needed only when extensions start publishing.
+In use since the first extension was published. Right now `BOT_PAT` holds the `gh` login
+token, which stops working if you log `gh` out; replace it with a scoped token like this:
 
 1. GitHub → your avatar → Settings → Developer settings → Personal access tokens →
    **Fine-grained tokens** → Generate new token.
@@ -250,22 +307,27 @@ secrets, and accept that users must reinstall once.
 | Tag already exists | pick the next number, or delete the bad one first |
 | Phone says "App not installed" when updating | the new `versionCode` is not higher than the installed one, or the key differs |
 | Badge in README still shows the old version | wait a few minutes; the badge image is cached |
+| `fatal: tag 'vX' already exists` | an old tag with that name is on your Mac; check it with `git log -1 vX`, delete it with `git tag -d vX` if it is not yours |
+| Extension CI: `Failed to read key ... from store` | `KEY_PASSWORD` differs from `KEY_STORE_PASSWORD`; PKCS12 keys have one password, set both secrets to it |
+| Extension CI: `Cannot choose between the available variants of project ':extensions-lib'` | the provided-classpath configuration lost its release build type; see `ExtensionPlugin.kt` |
+| Release built but the APK is debug-signed | a signing secret is missing; check `gh secret list` and compare fingerprints (step 6) |
 
 Delete a tag and its release to redo it:
 
 ```bash
-gh release delete v0.2.0 --repo Globeeeee/dokusho --yes
-git push origin --delete v0.2.0
-git tag -d v0.2.0
+gh release delete v0.1.2 --repo Globeeeee/dokusho --yes --cleanup-tag
+git tag -d v0.1.2
 ```
 
-Then fix, commit, push, and tag again.
+Then fix, commit, push, and tag again. If the broken release was already downloaded by
+anyone, use a new `versionCode` (see Withdrawing a release).
 
 ## Version numbers, in short
 
-`MAJOR.MINOR.PATCH`, like `0.2.0`.
+`MAJOR.MINOR.PATCH`, like `0.1.1`.
 
-- **PATCH** (`0.2.1`): small fixes.
+- **PATCH** (`0.1.2`): small fixes and small features. The current line while Dokusho is
+  personal use.
 - **MINOR** (`0.3.0`): new features, like the reader or text-to-speech.
 - **MAJOR** (`1.0.0`): when Dokusho is ready for everyday use by others.
 
@@ -279,3 +341,5 @@ While it starts with `0.`, things can still change a lot between versions.
 | `.github/workflows/build.yml` | the check that runs on every push to `main` |
 | `app/build.gradle.kts` | version numbers and signing setup |
 | `app/src/main/java/eu/kanade/tachiyomi/data/updater/AppUpdateChecker.kt` | where the app looks for new releases |
+| `dokusho-extensions-source/.github/workflows/build_push.yml` | builds, signs and publishes changed extensions on every push to `main` |
+| `dokusho-extensions-source/.github/scripts/publish-repo.py` | writes `index.pb` and `index.json` in `dokusho-extensions` |
