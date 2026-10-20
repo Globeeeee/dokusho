@@ -9,9 +9,10 @@ an APK people can download from GitHub, and how extensions get published.
 |---------|-------------|------|-------------|-------|
 | v0.1.0 | 1 | 2026-10-19 | Rebranded Mihon base, icon, release pipeline. Cannot read novels | published |
 | v0.2.0 | 2 | 2026-10-20 | Novel reader | **withdrawn** the same day, replaced by v0.1.1 |
-| v0.1.1 | 3 | 2026-10-20 | Novel reader with four reading modes, lib 2.0 extensions (Royal Road) | **latest** |
+| v0.1.1 | 3 | 2026-10-20 | Novel reader with four reading modes, lib 2.0 extensions (Royal Road) | published |
+| v0.1.2 | 4 | 2026-10-20 | Fix: library and novel details no longer load forever when no tracker is enabled | **latest** |
 
-**Next release: `versionCode = 4`.** Code 2 is used up by the withdrawn v0.2.0 and can never
+**Next release: `versionCode = 5`.** Code 2 is used up by the withdrawn v0.2.0 and can never
 be reused, so the codes skip a number. That is fine; Android only cares that each one is bigger.
 
 ## The short version
@@ -37,8 +38,8 @@ does.
 Open `app/build.gradle.kts` and change both numbers:
 
 ```kotlin
-versionCode = 4          // bigger than every code used before (see Releases so far), never reused
-versionName = "0.1.2"    // what people see
+versionCode = 5          // bigger than every code used before (see Releases so far), never reused
+versionName = "0.1.3"    // what people see
 ```
 
 `versionCode` is for Android: a phone only installs an update when this number is bigger.

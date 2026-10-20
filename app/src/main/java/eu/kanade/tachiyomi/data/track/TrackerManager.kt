@@ -15,7 +15,9 @@ import eu.kanade.tachiyomi.data.track.mangaupdates.MangaUpdates
 import eu.kanade.tachiyomi.data.track.myanimelist.MyAnimeList
 import eu.kanade.tachiyomi.data.track.shikimori.Shikimori
 import eu.kanade.tachiyomi.data.track.suwayomi.Suwayomi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
 
 @Inject
 @SingleIn(AppScope::class)
@@ -56,9 +58,13 @@ class TrackerManager {
 
     fun loggedInTrackers() = trackers.filter { it.isLoggedIn }
 
-    fun loggedInTrackersFlow() = combine(trackers.map { it.isLoggedInFlow }) {
-        it.mapIndexedNotNull { index, isLoggedIn ->
-            if (isLoggedIn) trackers[index] else null
+    fun loggedInTrackersFlow(): Flow<List<Tracker>> {
+        // combine() over zero flows never emits, which left the library loading forever.
+        if (trackers.isEmpty()) return flowOf(emptyList())
+        return combine(trackers.map { it.isLoggedInFlow }) {
+            it.mapIndexedNotNull { index, isLoggedIn ->
+                if (isLoggedIn) trackers[index] else null
+            }
         }
     }
 
