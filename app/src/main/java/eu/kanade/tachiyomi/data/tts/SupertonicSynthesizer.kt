@@ -201,9 +201,12 @@ internal class SupertonicSynthesizer private constructor(
             val env = OrtEnvironment.getEnvironment()
             fun session(name: String): OrtSession {
                 val options = OrtSession.SessionOptions().apply {
-                    setIntraOpNumThreads(2)
-                    // Skip heavy graph rewrites so the first chapter doesn't sit on a long load.
-                    setOptimizationLevel(OrtSession.SessionOptions.OptLevel.NO_OPT)
+                    // Synthesis has to outpace speech for read-ahead to stay ahead; two threads were not
+                    // enough on mid-range phones. Leave the other cores to playback and the UI.
+                    setIntraOpNumThreads((Runtime.getRuntime().availableProcessors() / 2).coerceIn(2, 4))
+                    // Basic rewrites (constant folding, redundant nodes) cost little at load and speed up
+                    // every sentence; the extended ones are what made the first load slow.
+                    setOptimizationLevel(OrtSession.SessionOptions.OptLevel.BASIC_OPT)
                 }
                 options.use {
                     return env.createSession(SupertonicModel.file(app, "onnx/$name").absolutePath, options)
@@ -243,8 +246,12 @@ private fun preprocess(text: String, lang: String): String {
         .replace(Regex("\\s+'"), "'")
         .replace(Regex("([\"'`])\\1+"), "$1")
         .replace(Regex("\\s+"), " ")
+        // An ellipsis inside a line is a pause, not the end of a sentence; read it like a comma.
+        .replace(Regex("\\s*(?:\\.{2,}|…)+\\s*(?=\\S)"), ", ")
+        .replace(Regex("(?:\\.{2,}|…)+$"), ".")
         .trim()
-    if (cleaned.isEmpty()) return ""
+    // Nothing to say ("...", "* * *"): no clip, so playback moves straight on instead of stalling on noise.
+    if (cleaned.none { it.isLetterOrDigit() }) return ""
     if (cleaned.last() !in ".!?;:,'\"')}…。」』】〉》›»") cleaned += "."
     return "<$lang>$cleaned</$lang>"
 }
@@ -290,13 +297,54 @@ private val REPLACEMENTS = mapOf(
 )
 
 /** One sentence per clip, so the highlight can sit on exactly the sentence being spoken. */
+/**
+ * Splits a paragraph into the clips Supertonic voices, in order. Each clip is an exact slice of [text], so
+ * playback can find it again for highlighting. Sentences end at `.`, `!` or `?` followed by space, never at
+ * an ellipsis ("Wait... no"), which is a pause inside one sentence. Very short sentences ("Yes.") join their
+ * neighbour: each clip pays the model's fixed cost, and a run of tiny clips sounds choppy.
+ */
 internal fun supertonicChunks(text: String, maxLen: Int = 240): List<String> {
-    val sentences = text.split(Regex("(?<=[.!?])(?:[\"'”’)]*)\\s+")).filter { it.isNotBlank() }
-    val parts = if (sentences.isEmpty()) listOf(text) else sentences
-    return parts.filter { it.isNotBlank() }.flatMap { sentence ->
+    val sentences = mutableListOf<IntRange>()
+    var from = 0
+    for (match in SENTENCE_END.findAll(text)) {
+        val end = match.range.first + match.value.trimEnd().length
+        sentenceRange(text, from, end)?.let(sentences::add)
+        from = match.range.last + 1
+    }
+    sentenceRange(text, from, text.length)?.let(sentences::add)
+    if (sentences.isEmpty()) return emptyList()
+
+    val merged = mutableListOf<IntRange>()
+    for (sentence in sentences) {
+        val last = merged.lastOrNull()
+        val short = last != null && (last.length() < SHORT_SENTENCE || sentence.length() < SHORT_SENTENCE)
+        if (short && sentence.last - last!!.first + 1 <= MERGED_MAX) {
+            merged[merged.lastIndex] = last.first..sentence.last
+        } else {
+            merged += sentence
+        }
+    }
+    return merged.flatMap { range ->
+        val sentence = text.substring(range)
         if (sentence.length <= maxLen) listOf(sentence) else splitAtLength(sentence, maxLen)
     }
 }
+
+/** The trimmed range of `text[from until to]`, or null when it is blank. */
+private fun sentenceRange(text: String, from: Int, to: Int): IntRange? {
+    var start = from
+    var end = to
+    while (start < end && text[start].isWhitespace()) start++
+    while (end > start && text[end - 1].isWhitespace()) end--
+    return if (start < end) start until end else null
+}
+
+private fun IntRange.length() = last - first + 1
+
+/** A sentence end: `.`, `!` or `?` not part of an ellipsis, closing quotes or brackets, then whitespace. */
+private val SENTENCE_END = Regex("""(?<![.…])[.!?](?![.…])["'”’)\]]*\s+""")
+private const val SHORT_SENTENCE = 40
+private const val MERGED_MAX = 160
 
 private fun splitAtLength(text: String, maxLen: Int): List<String> {
     val chunks = mutableListOf<String>()

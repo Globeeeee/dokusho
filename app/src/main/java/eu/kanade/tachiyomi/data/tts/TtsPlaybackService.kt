@@ -152,16 +152,18 @@ class TtsPlaybackService : Service() {
                 resumeAfterFocus = false
                 pause(keepFocus = true)
             }
-            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT,
-            // Speech can't duck under other audio and stay intelligible; pause instead.
-            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK,
-            -> if (playing) {
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> if (playing) {
                 resumeAfterFocus = true
                 pause(keepFocus = true)
             }
-            AudioManager.AUDIOFOCUS_GAIN -> if (resumeAfterFocus) {
-                resumeAfterFocus = false
-                play()
+            // A notification sound: keep reading, quieter, instead of pausing and restarting the sentence.
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> engine.duck(true)
+            AudioManager.AUDIOFOCUS_GAIN -> {
+                engine.duck(false)
+                if (resumeAfterFocus) {
+                    resumeAfterFocus = false
+                    play()
+                }
             }
         }
     }
@@ -572,7 +574,8 @@ class TtsPlaybackService : Service() {
         scope.launch(Dispatchers.IO) {
             updateChapter.await(
                 ChapterUpdate(chapter.id) {
-                    this.read = read
+                    // Never writes unread, so a chapter the reader or the user marked read stays read
+                    if (read) this.read = true
                     lastPageRead = blockIndex
                 },
             )

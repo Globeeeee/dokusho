@@ -121,7 +121,11 @@ object SupertonicRuntime {
         warm(context)
         ensureWorker(context)
         signal.trySend(Unit)
-        val audio = deferred.await() ?: return null
+        val started = System.nanoTime()
+        val audio = deferred.await()
+        // A read-ahead miss: playback waited on synthesis. Timing only, never the sentence.
+        logcat { "Supertonic read-ahead miss, waited ${(System.nanoTime() - started) / 1_000_000}ms" }
+        if (audio == null) return null
         synchronized(gate) {
             markHandedLocked(key, audio)
             signal.trySend(Unit)

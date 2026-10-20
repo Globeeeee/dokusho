@@ -735,7 +735,9 @@ class ReaderViewModel(
                 val chapter = readerChapter.chapter
                 updateChapter.await(
                     ChapterUpdate(chapter.id) {
-                        read = chapter.read
+                        // Only ever marks read: listening can finish this chapter while the reader still holds it
+                        // as unread, and writing that stale flag would undo it. Unread is set by its own action.
+                        if (chapter.read) read = true
                         lastPageRead = chapter.lastPageRead
                     },
                 )

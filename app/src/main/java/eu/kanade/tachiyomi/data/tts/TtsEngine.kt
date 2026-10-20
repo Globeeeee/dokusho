@@ -28,6 +28,12 @@ interface TtsEngine {
      */
     fun setVoice(voiceName: String?)
 
+    /**
+     * Lowers the voice while another app plays a short sound (a notification), and restores it, without
+     * interrupting the utterance. Engines that can't change volume mid-utterance keep speaking as they are.
+     */
+    fun duck(ducked: Boolean) {}
+
     /** Stops the current utterance; [speak] returns as aborted, not failed. */
     fun stop()
 

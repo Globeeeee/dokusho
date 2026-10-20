@@ -3,6 +3,8 @@ package eu.kanade.tachiyomi.data.tts
 import android.content.Context
 import android.media.AudioAttributes
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.speech.tts.Voice
@@ -25,6 +27,7 @@ class AndroidTtsEngine(
     private var pitch = 1f
     private var voiceName: String? = null
     private val utteranceIds = AtomicInteger()
+    private val highlightLag = Handler(Looper.getMainLooper())
 
     override suspend fun init(): Boolean {
         if (tts != null) return true
@@ -77,7 +80,8 @@ class AndroidTtsEngine(
                 override fun onStart(utteranceId: String?) = Unit
 
                 override fun onRangeStart(utteranceId: String?, start: Int, end: Int, frame: Int) {
-                    if (utteranceId == id) onRange(start, end)
+                    // Reported as the word is handed to audio output, a moment before it is heard.
+                    if (utteranceId == id) highlightLag.postDelayed({ onRange(start, end) }, HIGHLIGHT_LAG_MS)
                 }
 
                 override fun onDone(utteranceId: String?) {
@@ -228,3 +232,6 @@ class TtsCatalog(private val context: Context) {
             continuation.invokeOnCancellation { engine?.shutdown() }
         }
 }
+
+/** Typical output latency between the engine's word callback and the word being heard. */
+private const val HIGHLIGHT_LAG_MS = 120L
