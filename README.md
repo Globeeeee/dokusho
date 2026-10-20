@@ -57,7 +57,10 @@ Available extensions:
 |-----------|------|--------|
 | Royal Road | royalroad.com | published |
 | Scribble Hub | scribblehub.com | published |
-| Webnovel, WuxiaWorld | official sites, with your own login | planned |
+| Wattpad | wattpad.com | published |
+| WuxiaWorld | wuxiaworld.com (official) | published; locked chapters marked 🔒 |
+| Webnovel | official site, with your own login | planned |
+| Archive of Our Own | archiveofourown.org | next, once the site is reachable |
 
 Extension source code: [dokusho-extensions-source](https://github.com/Globeeeee/dokusho-extensions-source).
 

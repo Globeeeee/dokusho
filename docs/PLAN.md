@@ -13,7 +13,7 @@ store. Next: device test of v0.1.1, then phase 3 (offline downloads) and Scribbl
 | 0. Build green and branded | done |
 | 1. Text source contract | done (device check of Royal Road loading in v0.1.1 pending) |
 | 2. Reader | done; device test pending |
-| 3. Offline downloads | not started |
+| 3. Offline downloads | done; device test pending |
 | 4. First extensions | Royal Road and Scribble Hub done; Webnovel and WuxiaWorld next |
 | 5. Export EPUB and PDF | not started |
 | 6. Background TTS | not started |
@@ -115,15 +115,19 @@ Design detail for each row: `.claude/rules/novel.md`.
 - [ ] Done when: a 3,000-word chapter scrolls smoothly, position restores, next chapter preloads. Needs Qasim's device test of v0.1.1.
 
 ### 3. Offline downloads (3 days)
-- Downloader branch for `NovelSource`: fetch content, write `chapter.html` + `meta.json`.
-- Provider, cache and page loader recognise the new layout; delete-after-read and download-ahead keep working.
-- Done when: downloaded chapters open in airplane mode and show the downloaded badge.
+- [x] Downloader branch for `NovelSource`: fetch content, write `chapter.html` + `meta.json` into the chapter folder; locked or empty chapters fail with a clear error
+- [x] Images in the chapter saved next to the text (`image_001.jpg` ...) and the HTML pointed at them, so chapters read fully offline; an image that fails keeps its web address
+- [x] Download index recognises the folders (downloaded badge) with no change; the reader opens downloaded chapters from disk and resolves local images
+- [x] Delete-after-read works on the folder; download-ahead also counts a novel chapter read from disk
+- [ ] Done when: downloaded chapters open in airplane mode and show the downloaded badge. Needs Qasim's device test of 0.1.5.
 
 ### 4. First extensions (3 days, then ongoing)
 Detail and site list in `dokusho-extensions-source/docs/PLAN.md`.
 - [x] Royal Road: published (2.0.1)
 - [x] Scribble Hub: built and pushed for publishing (2.0.1)
-- [ ] Webnovel and WuxiaWorld (official): WebView login, cookie reuse, locked chapters shown as locked
+- [x] Wattpad and WuxiaWorld (official, free chapters; locked ones marked) built and pushed for publishing
+- [ ] Archive of Our Own: waiting for AO3's server (down during recon)
+- [ ] Webnovel (official): WebView login, cookie reuse, locked chapters shown as locked
 - [x] Publish pipeline: extension key and secrets, CI builds, signs and writes `index.pb` and `index.json`; fixed the stub variant and the PKCS12 key password on the way
 - [x] `index.pb` loads in the app and lists Royal Road (seen on v0.1.0)
 - Not building: shadowslave.space, freewebnovel.com, novellive.com, wuxiaworld.eu, readnovelfull.com, novelhi.com, noveltrust.com and similar, which republish paid chapters without permission (decision 2026-10-20, see Decisions).
