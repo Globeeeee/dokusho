@@ -452,6 +452,7 @@ private fun ContinuousScrollReader(
         if (item == null) listState.scrollToItem(index)
         val placed = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == index } ?: return@LaunchedEffect
         val textLength = (currentItems[index] as BlockItem).block.text.length
+
         // ponytail: the sentence's place in a tall paragraph is estimated from its character range, not the
         // text layout; close enough to centre it.
         fun at(offset: Int): Int {
