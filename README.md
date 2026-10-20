@@ -55,8 +55,8 @@ Available extensions:
 
 | Extension | Site | Status |
 |-----------|------|--------|
-| Royal Road | royalroad.com | published; browsing, search and chapter lists work, reading arrives with the reader (phase 2) |
-| Scribble Hub | scribblehub.com | next |
+| Royal Road | royalroad.com | published |
+| Scribble Hub | scribblehub.com | published |
 | Webnovel, WuxiaWorld | official sites, with your own login | planned |
 
 Extension source code: [dokusho-extensions-source](https://github.com/Globeeeee/dokusho-extensions-source).

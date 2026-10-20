@@ -14,7 +14,7 @@ store. Next: device test of v0.1.1, then phase 3 (offline downloads) and Scribbl
 | 1. Text source contract | done (device check of Royal Road loading in v0.1.1 pending) |
 | 2. Reader | mostly done, see open items |
 | 3. Offline downloads | not started |
-| 4. First extensions | Royal Road published, Scribble Hub recon done |
+| 4. First extensions | Royal Road and Scribble Hub done; Webnovel and WuxiaWorld next |
 | 5. Export EPUB and PDF | not started |
 | 6. Background TTS | not started |
 | 7. Polish and release | release pipeline done early |
@@ -121,7 +121,7 @@ Design detail for each row: `.claude/rules/novel.md`.
 ### 4. First extensions (3 days, then ongoing)
 Detail and site list in `dokusho-extensions-source/docs/PLAN.md`.
 - [x] Royal Road: published (2.0.1)
-- [ ] Scribble Hub: recon done (25 cards per listing page via headless Chrome), extension next
+- [x] Scribble Hub: built and pushed for publishing (2.0.1)
 - [ ] Webnovel and WuxiaWorld (official): WebView login, cookie reuse, locked chapters shown as locked
 - [x] Publish pipeline: extension key and secrets, CI builds, signs and writes `index.pb` and `index.json`; fixed the stub variant and the PKCS12 key password on the way
 - [x] `index.pb` loads in the app and lists Royal Road (seen on v0.1.0)
