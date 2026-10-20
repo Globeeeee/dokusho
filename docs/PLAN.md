@@ -4,20 +4,21 @@ Web novel reader for Android, built on Mihon. Reads novels from public sites thr
 installable extensions, downloads them for offline reading, exports EPUB and PDF, and reads
 aloud in the background.
 
-Status (2026-10-20): phase 0 and phase 1 done. Phase 2 reader built and released as v0.1.1
-(versionCode 3; code 2 belonged to a withdrawn v0.2.0). Royal Road extension published to the
-store. Phases 2 and 3 shipped up to v0.1.5 (Cloudflare challenge on screen, downloads, continuous scroll, VPN setting). Next: novel local source (EPUB, TXT), then export.
+Status (2026-10-21): phases 0 to 3 done and confirmed on device. Phase 4: 21 extensions built and
+published; AO3, SpaceBattles, Sufficient Velocity, FanFiction.net, FictionPress and Webnovel in
+progress. Phase 6 TTS built for v0.1.6 (device done-when check pending). Phase 5 export in
+progress for v0.1.7. Next: phase 7 polish (novel local source, wording), see its list.
 
-| Phase                      | State                                                          |
-| -------------------------- | -------------------------------------------------------------- |
-| 0. Build green and branded | done                                                           |
-| 1. Text source contract    | done (device check of Royal Road loading in v0.1.1 pending)    |
-| 2. Reader                  | done; device test pending                                      |
-| 3. Offline downloads       | done; device test pending                                      |
-| 4. First extensions        | Royal Road and Scribble Hub done; Webnovel and WuxiaWorld next |
-| 5. Export EPUB and PDF     | not started                                                    |
-| 6. Background TTS          | not started                                                    |
-| 7. Polish and release      | release pipeline done early                                    |
+| Phase                      | State                                                                     |
+| -------------------------- | ------------------------------------------------------------------------- |
+| 0. Build green and branded | done                                                                      |
+| 1. Text source contract    | done, confirmed on device                                                 |
+| 2. Reader                  | done, confirmed on device (v0.1.5)                                        |
+| 3. Offline downloads       | done, confirmed on device (v0.1.5); stuck-download fix in progress        |
+| 4. First extensions        | 21 built and published; AO3, forums, FanFiction.net, Webnovel in progress |
+| 5. Export EPUB and PDF     | in progress (v0.1.7)                                                      |
+| 6. Background TTS          | built in v0.1.6; screen-off and phone-call check pending                  |
+| 7. Polish and release      | release pipeline and help guides done; open items below                   |
 
 ## Decisions taken
 
@@ -132,7 +133,9 @@ Detail and site list in `dokusho-extensions-source/docs/PLAN.md`.
 - [x] Royal Road: published (2.0.1)
 - [x] Scribble Hub: built and pushed for publishing (2.0.1)
 - [x] Wattpad and WuxiaWorld (official, free chapters; locked ones marked) built and pushed for publishing
-- [ ] Archive of Our Own: waiting for AO3's server (down during recon)
+- [x] 2026-10-21: 21 extensions built and published after a full audit (shared sanitiser, chapter dates, WuxiaWorld login token for the user's own unlocked chapters); list in the extensions plan
+- [ ] Archive of Our Own, SpaceBattles, Sufficient Velocity, FanFiction.net, FictionPress: in progress
+- [ ] Webnovel with the user's own login, locked chapters stay locked: in progress
 - [x] Publish pipeline: extension key and secrets, CI builds, signs and writes `index.pb` and `index.json`; fixed the stub variant and the PKCS12 key password on the way
 - [x] `index.pb` loads in the app and lists Royal Road (seen on v0.1.0)
 
@@ -174,6 +177,19 @@ MVP = phases 0 to 4, roughly 3 weeks.
 
 - Strings: English `base` first ("manga" to "novel"); other locales fall back where untranslated.
 - Local import: EPUB and TXT folders into `LocalSource`.
+
+Open items found while writing the help guides (2026-10-21):
+
+- [ ] Local source opens text: a text EPUB, TXT or HTML file opens in the novel reader (today Local source is image-only, a text EPUB shows no pages, TXT and HTML are ignored)
+- [ ] Novel reader honours **Tap zones** and **Invert tap zones** (today fixed thirds); volume keys already work
+- [ ] Hide download settings that do nothing for novels: Save as CBZ, Split tall images, Concurrent page downloads
+- [ ] Listen from a tapped paragraph (phase 6 asked for it; today Listen starts at the top of the screen)
+- [ ] Wording: backup "Library entries" and "All read entries", Smart update "Skip entries with...", migration "...current entry..." say novel; library CSV export named `dokusho_library.csv` instead of `mihon_library.csv`
+- [ ] Migration strings (`migrationConfigScreen_*`, `migrationListScreen_*`) added to base `strings.xml`
+- [ ] Backup screen hides the empty **Tracking** option while trackers are off
+- [ ] Supertonic language detection beyond English, Japanese and Korean, or fall back to the system engine
+- [ ] Remove Mihon's unused donation popup and Support us screen (unreachable, still hold Mihon links)
+- [ ] Cloudflare: form posts on sites that reject OkHttp after the WebView passed, and checks that need a tap while the app is in the background, still fail
 
 - [x] Release workflow on `v*` tags, keystore secrets, GitHub Releases (done in phase 0; v0.1.0 and v0.1.1 published). F-Droid later.
 
