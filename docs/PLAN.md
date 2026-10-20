@@ -167,6 +167,8 @@ MVP = phases 0 to 4, roughly 3 weeks.
 
 - [x] Built in v0.1.6: `TtsEngine` with Android TTS and Supertonic (on-demand model download), `TtsPlaybackService` (mediaPlayback, MediaSession, notification controls, audio focus, wake lock, sleep timer), auto-advance to the next chapter, word highlight and auto-scroll, voice picker
 - [x] v0.1.7: novel cover in the media player, notification and lock screen (Settings, Reader, Show novel cover)
+- [x] v0.1.8: Supertonic plays on one long-lived audio track with read-ahead (no gap per sentence), loads with basic graph optimisation and more threads, reads "..." as a pause and skips wordless clips, joins very short sentences; highlight follows the frame actually heard; scroll mode keeps the spoken sentence centred, page modes turn to its page; highlight colour choice; chapters finished by the voice stay marked read; notification sounds duck the voice instead of restarting the sentence
+- [x] v0.1.8: page turn effect for the left to right and right to left page modes
 - [ ] Done-when check on device: a full chapter with the screen off, and a phone call in the middle
 
 ### Later (not scheduled)
