@@ -451,10 +451,13 @@ internal fun decodeJsString(value: String?): String {
     }
 }
 
+/**
+ * True for the challenge page itself. Not `/cdn-cgi/challenge-platform/`: Cloudflare injects that
+ * script into the real pages of many sites, which made a passed check look unsolved.
+ */
 internal fun isCloudflareChallengePage(html: String): Boolean {
     return "window._cf_chl_opt" in html ||
         "cf-browser-verification" in html ||
-        "/cdn-cgi/challenge-platform/" in html ||
         "id=\"challenge-form\"" in html ||
         "<title>Just a moment" in html
 }
