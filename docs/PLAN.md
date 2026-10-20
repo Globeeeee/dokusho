@@ -107,10 +107,11 @@ Design detail for each row: `.claude/rules/novel.md`.
 - [x] Next chapter preloads at 60 percent; Next and Previous chapter buttons at the chapter end (own end screen instead of `ChapterTransition`)
 - [x] Keep screen on and fullscreen: Mihon's existing reader settings apply to the novel viewer unchanged
 - [x] Released in v0.1.1
+- [x] v0.1.3: theme **Auto** (default) follows General → Background color, so a black reader stays black; the reader settings dialog's Reading mode tab shows the novel options for novel sources; Settings → Reader has a Novel reader group; Show page number shows progress in scroll mode; scrolling past the end or turning past the last page opens the next chapter
 - [ ] Font family choice (only serif today)
 - [ ] Images inside chapters (dropped by the safelist today)
 - [ ] Cache chapter text in `ChapterCache` so reopening a chapter is instant and works briefly offline
-- [ ] Hide image-only reader settings (crop borders, color filter, page layout) for novel sources; the image long-press menu already never opens
+- [ ] Hide the remaining image-only options in the General tab (page transitions, double-tap zoom, flash) for novel sources; color filter, brightness, grayscale and invert apply to text and stay
 - [ ] Done when: a 3,000-word chapter scrolls smoothly, position restores, next chapter preloads. Needs Qasim's device test of v0.1.1.
 
 ### 3. Offline downloads (3 days)

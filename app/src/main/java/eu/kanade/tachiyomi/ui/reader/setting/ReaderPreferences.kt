@@ -297,9 +297,10 @@ class ReaderPreferences(
 
     val novelHorizontalMargin: Preference<Int> = preferenceStore.getInt("pref_novel_horizontal_margin", 20)
 
-    val novelTheme: Preference<NovelTheme> = preferenceStore.getEnum("pref_novel_theme", NovelTheme.PAPER)
+    // AUTO follows General > Background color, so a black reader stays black for novels too.
+    val novelTheme: Preference<NovelTheme> = preferenceStore.getEnum("pref_novel_theme_v2", NovelTheme.AUTO)
 
-    enum class NovelTheme { PAPER, SEPIA, DARK, BLACK }
+    enum class NovelTheme { AUTO, PAPER, SEPIA, DARK, BLACK }
 
     val novelReadingMode: Preference<NovelReadingMode> =
         preferenceStore.getEnum("pref_novel_reading_mode", NovelReadingMode.SCROLL)

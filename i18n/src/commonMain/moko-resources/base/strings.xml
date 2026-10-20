@@ -1122,6 +1122,7 @@
     <string name="donationCampaign.dismiss">Dismiss</string>
 
     <!-- Novel reader -->
+    <string name="novel_reader">Novel reader</string>
     <string name="novel_chapter_locked">This chapter is locked on the site. Unlock it there with your account, then open it again.</string>
     <string name="novel_chapter_empty">This chapter has no text.</string>
     <string name="novel_next_chapter">Next chapter</string>
@@ -1133,6 +1134,7 @@
     <string name="novel_line_spacing">Line spacing</string>
     <string name="novel_margins">Margins</string>
     <string name="novel_theme">Theme</string>
+    <string name="novel_theme_auto">Same as background</string>
     <string name="novel_theme_paper">Paper</string>
     <string name="novel_theme_sepia">Sepia</string>
     <string name="novel_theme_dark">Dark</string>

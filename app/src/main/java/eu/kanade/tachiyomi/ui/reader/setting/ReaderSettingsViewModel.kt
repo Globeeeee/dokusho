@@ -2,6 +2,7 @@ package eu.kanade.tachiyomi.ui.reader.setting
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import eu.kanade.tachiyomi.source.NovelSource
 import eu.kanade.tachiyomi.ui.reader.ReaderViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -20,6 +21,12 @@ class ReaderSettingsViewModel(
         .map { it.viewer }
         .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.Lazily, null)
+
+    /** Novel sources get the text settings in the Reading mode tab instead of the image modes. */
+    val isNovelFlow = readerState
+        .map { it.source is NovelSource }
+        .distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.Lazily, false)
 
     val mangaFlow = readerState
         .map { it.manga }

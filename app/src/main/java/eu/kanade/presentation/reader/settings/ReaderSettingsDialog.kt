@@ -9,12 +9,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.window.DialogWindowProvider
 import eu.kanade.presentation.components.TabbedDialog
 import eu.kanade.presentation.components.TabbedDialogPaddings
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderSettingsViewModel
+import eu.kanade.tachiyomi.ui.reader.viewer.novel.NovelSettingsPage
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.i18n.stringResource
 
@@ -31,6 +34,7 @@ fun ReaderSettingsDialog(
         stringResource(MR.strings.custom_filter),
     )
     val pagerState = rememberPagerState { tabTitles.size }
+    val isNovel by viewModel.isNovelFlow.collectAsState()
 
     BoxWithConstraints {
         TabbedDialog(
@@ -60,7 +64,7 @@ fun ReaderSettingsDialog(
                     .verticalScroll(rememberScrollState()),
             ) {
                 when (page) {
-                    0 -> ReadingModePage(viewModel)
+                    0 -> if (isNovel) NovelSettingsPage(viewModel.preferences) else ReadingModePage(viewModel)
                     1 -> GeneralPage(viewModel)
                     2 -> ColorFilterPage(viewModel)
                 }

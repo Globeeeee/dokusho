@@ -64,6 +64,7 @@ object SettingsReaderScreen : SearchableSettings {
                 title = stringResource(MR.strings.pref_load_ahead_only_over_wifi),
                 subtitle = stringResource(MR.strings.pref_load_ahead_only_over_wifi_summary),
             ),
+            getNovelGroup(readerPreferences = readerPref),
             getDisplayGroup(readerPreferences = readerPref),
             getEInkGroup(readerPreferences = readerPref),
             getReadingGroup(readerPreferences = readerPref),
@@ -71,6 +72,48 @@ object SettingsReaderScreen : SearchableSettings {
             getWebtoonGroup(readerPreferences = readerPref),
             getNavigationGroup(readerPreferences = readerPref),
             getActionsGroup(readerPreferences = readerPref),
+        )
+    }
+
+    // Dokusho: the text reader. The same options are in the reader's settings dialog for novel sources.
+    @Composable
+    private fun getNovelGroup(readerPreferences: ReaderPreferences): Preference.PreferenceGroup {
+        return Preference.PreferenceGroup(
+            title = stringResource(MR.strings.novel_reader),
+            preferenceItems = listOf(
+                Preference.PreferenceItem.ListPreference(
+                    preference = readerPreferences.novelReadingMode,
+                    entries = mapOf(
+                        ReaderPreferences.NovelReadingMode.SCROLL to stringResource(MR.strings.novel_mode_scroll),
+                        ReaderPreferences.NovelReadingMode.PAGED_LTR to stringResource(MR.strings.novel_mode_paged_ltr),
+                        ReaderPreferences.NovelReadingMode.PAGED_RTL to stringResource(MR.strings.novel_mode_paged_rtl),
+                        ReaderPreferences.NovelReadingMode.PAGED_VERTICAL to
+                            stringResource(MR.strings.novel_mode_paged_vertical),
+                    ),
+                    title = stringResource(MR.strings.novel_reading_mode),
+                ),
+                Preference.PreferenceItem.ListPreference(
+                    preference = readerPreferences.novelTheme,
+                    entries = mapOf(
+                        ReaderPreferences.NovelTheme.AUTO to stringResource(MR.strings.novel_theme_auto),
+                        ReaderPreferences.NovelTheme.PAPER to stringResource(MR.strings.novel_theme_paper),
+                        ReaderPreferences.NovelTheme.SEPIA to stringResource(MR.strings.novel_theme_sepia),
+                        ReaderPreferences.NovelTheme.DARK to stringResource(MR.strings.novel_theme_dark),
+                        ReaderPreferences.NovelTheme.BLACK to stringResource(MR.strings.novel_theme_black),
+                    ),
+                    title = stringResource(MR.strings.novel_theme),
+                ),
+                Preference.PreferenceItem.SliderPreference(
+                    preference = readerPreferences.novelFontSize,
+                    valueRange = 12..32,
+                    title = stringResource(MR.strings.novel_font_size),
+                ),
+                Preference.PreferenceItem.SliderPreference(
+                    preference = readerPreferences.novelHorizontalMargin,
+                    valueRange = 8..48 step 4,
+                    title = stringResource(MR.strings.novel_margins),
+                ),
+            ),
         )
     }
 
