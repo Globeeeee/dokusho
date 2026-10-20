@@ -14,7 +14,7 @@ an APK people can download from GitHub, and how extensions get published.
 | v0.1.3 | 5 | 2026-10-20 | Reader follows the black/gray/white background, novel options in the reader's Reading mode tab and in Settings → Reader, page numbers, automatic next chapter | published |
 | v0.1.4 | 6 | 2026-10-20 | Font choice, images in chapters, cached chapter text, General tab shows only text options for novels | published |
 | v0.1.5 | 7 | 2026-10-20 | Cloudflare checks shown on screen, offline downloads with images, continuous scroll across chapters, custom colors, VPN setting, new empty library screen, Dokusho guides | published |
-| v0.1.6 | 8 | 2026-10-21 | Text-to-speech (Android TTS and Supertonic) with word highlight and auto-scroll, chapter skip buttons fixed, real chapter dates instead of "today", faster chapter images, Cloudflare check detection | **latest** |
+| v0.1.6 | 8 | 2026-10-21 | Text-to-speech (Android TTS and Supertonic) with word highlight and auto-scroll, chapter skip buttons fixed, real chapter dates instead of "today", faster chapter images and animated GIFs, voice picker, fewer "Failed to bypass Cloudflare" errors, Dokusho help guides | **latest** |
 
 **Next release: `versionCode = 9`.** Code 2 is used up by the withdrawn v0.2.0 and can never
 be reused, so the codes skip a number. That is fine; Android only cares that each one is bigger.

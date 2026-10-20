@@ -157,6 +157,9 @@ MVP = phases 0 to 4, roughly 3 weeks.
 - Later: `SupertonicEngine` with ONNX Runtime Android, on-demand model download on Wi-Fi, paragraph-level synthesis with one-ahead buffering and per-chapter WAV cache.
 - Done when: playback continues with the screen off for a full chapter and survives a phone call.
 
+- [x] Built in v0.1.6: `TtsEngine` with Android TTS and Supertonic (on-demand model download), `TtsPlaybackService` (mediaPlayback, MediaSession, notification controls, audio focus, wake lock, sleep timer), auto-advance to the next chapter, word highlight and auto-scroll, voice picker
+- [ ] Done-when check on device: a full chapter with the screen off, and a phone call in the middle
+
 ### Later (not scheduled)
 
 - Trackers: register Dokusho OAuth clients on AniList and MyAnimeList with `dokusho://anilist-auth` and `dokusho://myanimelist-auth` redirects, put the ids in CI secrets, set `TrackerManager.trackers` back to `listOf(aniList, myAnimeList)`. Remove or replace the Mihon-registered client credentials still embedded for Hikka, Bangumi, Kitsu, Shikimori and Suwayomi.
@@ -164,7 +167,7 @@ MVP = phases 0 to 4, roughly 3 weeks.
 - Import from a tracker list: read the user's MangaUpdates (or AniList) list, search each title across installed extensions, add matches to the library. Revisit when trackers come back; until then library and progress stay local only.
 - Public release: store listing, F-Droid, translations. Settle the name first (see Decisions).
 
-- [x] Help links point to `docs/guides/` (getting started, troubleshooting) instead of mihon.app. Local source help still pending with the novel local source.
+- [x] Help links point to `docs/guides/` instead of mihon.app, including Local source help (v0.1.6); guides for local source, reader and TTS, downloads, backups, library and FAQ
 - [x] VPN setting (Settings → VPN): SOCKS5 or HTTP proxy for Dokusho's OkHttp and WebView traffic, connection check. A built-in Dokusho server is an open decision.
 
 ### 7. Polish and release

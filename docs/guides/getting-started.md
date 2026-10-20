@@ -44,29 +44,35 @@ Updates for extensions show up on the same screen.
 - **Settings** (gear in the reader menu): font, size, line height, margins, paragraph spacing,
   justify, indent, and themes (paper, sepia, dark, black, or your own colors).
 - Progress is saved per paragraph, so a chapter reopens where you stopped.
+- **Listen** in the reader menu reads the chapter aloud, also with the screen off.
+
+More in the [reader guide](reader.md).
 
 ## 5. Read offline
 
 Open a novel, long press chapters (or use the download icon) and pick **Download**. Downloaded
 chapters, including their images, open without internet. **More** → **Download queue** shows
-progress.
+progress. See [downloads](downloads.md).
 
 ## 6. Stay up to date
 
 The **Updates** tab lists new chapters for novels in your library. Pull down on **Library** to
-check now; **Settings** → **Library** sets automatic checks.
+check now; **Settings** → **Library** sets automatic checks. See [library](library.md).
 
 ## Moving a novel to another site
 
 If a site stops working, open **Browse** → **Migrate**, pick the old site and the novel, then
-search another installed site. Reading progress and categories move with it.
+search another installed site. Reading progress and categories move with it. Details in
+[library](library.md#moving-a-novel-to-another-source).
 
 ## Tracking
 
 Trackers (AniList, MyAnimeList and others) are switched off in Dokusho for now. Your library
-and progress stay on the phone. Back them up from **More** → **Settings** → **Data and storage** → **Create backup**.
+and progress stay on the phone. Back them up from **More** → **Settings** → **Data and storage** → **Create backup**;
+see [backups](backups.md).
 
 ## Something not working?
 
 See [troubleshooting](troubleshooting.md): Cloudflare checks, sites blocked on your network,
-update errors and storage.
+update errors and storage. Quick answers are in the [FAQ](faq.md); every guide is listed in the
+[index](README.md).

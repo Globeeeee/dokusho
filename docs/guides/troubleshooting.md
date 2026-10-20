@@ -18,6 +18,8 @@ Your network or provider may be blocking the site (Wattpad is often blocked this
 
 1. **More** → **Settings** → **Advanced** → **DNS over HTTPS** → **Cloudflare**, then retry.
 2. If it still fails, try mobile data, or a trusted VPN app such as Cloudflare 1.1.1.1 with WARP.
+   Dokusho also has its own proxy setting in **More** → **Settings** → **VPN**; see the
+   [FAQ](faq.md#a-site-does-not-load-at-all-on-my-network).
 
 ## Timeouts
 
@@ -34,7 +36,7 @@ needs an update (**Browse** → **Extensions**).
 
 Dokusho warns before updating or downloading a lot at once, because many requests in a short
 time can get you rate limited or blocked by the site. Smaller batches, or a category per batch,
-avoid that.
+avoid that. See [library updates](library.md#library-updates) and [downloads](downloads.md).
 
 ## Storage
 
@@ -43,6 +45,8 @@ Pick where Dokusho keeps downloads and backups in **More** → **Settings** → 
 live in its `downloads` folder, one folder per site, then novel, then chapter.
 
 If downloads vanish after reinstalling, select the same folder again; Dokusho picks them up.
+The same folder holds `autobackup` ([backups](backups.md)) and `local`
+([Local source](local-source.md)).
 
 ## Locked chapters
 
