@@ -1,6 +1,10 @@
 package eu.kanade.tachiyomi.data.download
 
 import android.content.Context
+import android.widget.Toast
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.ProcessLifecycleOwner
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
@@ -8,6 +12,7 @@ import eu.kanade.tachiyomi.data.download.model.Download
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.online.HttpSource
+import eu.kanade.tachiyomi.util.system.toast
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asFlow
@@ -65,7 +70,17 @@ class DownloadManager(
     fun startDownloads() {
         if (downloader.isRunning) return
 
-        DownloadWorker.start(context)
+        val wifiOnly = downloadPreferences.downloadOnlyOverWifi.get()
+        DownloadWorker.start(context, wifiOnly)
+        // The worker waits for the network without a word, so say why the chapters sit queued
+        val waitingFor = when (DownloadWorker.networkIssue(context, wifiOnly)) {
+            DownloadWorker.NetworkIssue.Offline -> MR.strings.download_waiting_for_network
+            DownloadWorker.NetworkIssue.NoWifi -> MR.strings.download_waiting_for_wifi
+            null -> return
+        }
+        if (ProcessLifecycleOwner.get().lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+            ContextCompat.getMainExecutor(context).execute { context.toast(waitingFor, Toast.LENGTH_LONG) }
+        }
     }
 
     /**
@@ -73,6 +88,7 @@ class DownloadManager(
      */
     suspend fun pauseDownloads() {
         downloader.pause()
+        DownloadWorker.cancel(context)
     }
 
     /**
@@ -81,6 +97,7 @@ class DownloadManager(
     suspend fun clearQueue() {
         downloader.clearQueue()
         downloader.stop()
+        DownloadWorker.cancel(context)
     }
 
     /**

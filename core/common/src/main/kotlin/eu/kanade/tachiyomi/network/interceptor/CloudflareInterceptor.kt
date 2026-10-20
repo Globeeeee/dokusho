@@ -18,6 +18,7 @@ import androidx.webkit.ScriptHandler
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import eu.kanade.tachiyomi.network.AndroidCookieJar
+import eu.kanade.tachiyomi.network.NonInteractiveNetwork
 import eu.kanade.tachiyomi.util.system.isOutdated
 import eu.kanade.tachiyomi.util.system.toWebViewHeaders
 import eu.kanade.tachiyomi.util.system.toast
@@ -93,7 +94,7 @@ class CloudflareInterceptor(
                 Bypass.RetryWithCookie
             } else {
                 if (!prepareWebView()) return response
-                solve(request, response, clearance)
+                solve(request, response, clearance, NonInteractiveNetwork.isNonInteractive(chain.call()))
             }
         }
 
@@ -110,7 +111,8 @@ class CloudflareInterceptor(
     }
 
     override fun intercept(chain: Interceptor.Chain, request: Request, response: Response): Response {
-        return when (val bypass = solve(request, response, clearance(request.url))) {
+        val nonInteractive = NonInteractiveNetwork.isNonInteractive(chain.call())
+        return when (val bypass = solve(request, response, clearance(request.url), nonInteractive)) {
             is Bypass.Document -> documentResponse(request, bypass.html)
             Bypass.Cookie, Bypass.RetryWithCookie -> chain.proceed(request)
         }
@@ -125,7 +127,7 @@ class CloudflareInterceptor(
         return !clearance.isNullOrBlank() && clearance != previousClearance
     }
 
-    private fun solve(request: Request, response: Response, clearance: String?): Bypass {
+    private fun solve(request: Request, response: Response, clearance: String?, nonInteractive: Boolean): Bypass {
         try {
             response.close()
             // Keep cf_clearance. OkHttp is often rejected after the WebView has already solved the
@@ -133,7 +135,10 @@ class CloudflareInterceptor(
             val url = challengeUrl(request)
             val headers = request.headers.toWebViewHeaders()
             val first = resolveWithWebView(request, url, headers, allowInteractive = true)
-            val attempt = if (first.html == null && !first.bypassed && first.interactive && isAppInForeground()) {
+            // Background work like downloads fails with the Cloudflare message instead of waiting minutes on a
+            // check the user may never see, and is retried after the user passes it in the app
+            val canAskUser = !nonInteractive && isAppInForeground()
+            val attempt = if (first.html == null && !first.bypassed && first.interactive && canAskUser) {
                 val opened = solveInteractively(request, url, headers, clearance)
                 if (opened) {
                     resolveWithWebView(request, url, headers, allowInteractive = false)

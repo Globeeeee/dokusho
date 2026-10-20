@@ -84,6 +84,7 @@ private suspend fun Call.await(callStack: Array<StackTraceElement>): Response {
             }
         }
 
+        NonInteractiveNetwork.register(this)
         this.enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 if (continuation.isCancelled) return

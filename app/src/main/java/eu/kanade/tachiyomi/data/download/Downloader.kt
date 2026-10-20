@@ -13,6 +13,7 @@ import eu.kanade.tachiyomi.data.library.LibraryUpdateNotifier
 import eu.kanade.tachiyomi.data.notification.NotificationHandler
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.network.HttpException
+import eu.kanade.tachiyomi.network.NonInteractiveNetwork
 import eu.kanade.tachiyomi.network.awaitSuccess
 import eu.kanade.tachiyomi.source.NovelSource
 import eu.kanade.tachiyomi.source.UnmeteredSource
@@ -219,7 +220,8 @@ class Downloader(
         if (isRunning) return
 
         val previousJob = downloaderJob
-        downloaderJob = scope.launch {
+        // No one watches a download, so a Cloudflare check fails the chapter instead of waiting for the user
+        downloaderJob = scope.launch(NonInteractiveNetwork) {
             // Page writes block, so a canceled job can still be writing the pages this one would start on. Not
             // cancelable, so a job canceled while waiting still finishes after the one before it.
             withContext(NonCancellable) { previousJob?.join() }
@@ -381,7 +383,7 @@ class Downloader(
         if (chaptersToQueue.isNotEmpty()) {
             addAllToQueue(chaptersToQueue)
 
-            // Start downloader if needed
+            // Warn about a large queue once, when it starts
             if (autoStart && wasEmpty) {
                 val queuedDownloads = queueState.value.count { it.source !is UnmeteredSource }
                 val maxDownloadsFromSource = queueState.value
@@ -402,8 +404,9 @@ class Downloader(
                         NotificationHandler.openUrl(context, LibraryUpdateNotifier.HELP_WARNING_URL),
                     )
                 }
-                return true
             }
+            // Chapters left in the queue after a failure would otherwise keep new ones from ever starting
+            return autoStart
         }
         return false
     }
@@ -697,6 +700,7 @@ class Downloader(
                     val extension = url.substringBefore('?').substringAfterLast('.', "").lowercase()
                         .takeIf { it in NOVEL_IMAGE_EXTENSIONS } ?: "jpg"
                     val name = "image_%03d.%s".format(index + 1, extension)
+                    tmpDir.findFile(name)?.delete()
                     tmpDir.createFile(name)!!.openOutputStream().use { response.body.byteStream().copyTo(it) }
                     image.attr("src", name)
                 }
@@ -706,6 +710,9 @@ class Downloader(
             }
         }
         val html = document.body().html()
+        // A retry reuses the folder of the failed attempt, and an existing file isn't always truncated on write
+        tmpDir.findFile(NOVEL_CHAPTER_FILE)?.delete()
+        tmpDir.findFile(NOVEL_META_FILE)?.delete()
         tmpDir.createFile(NOVEL_CHAPTER_FILE)!!.openOutputStream().use { it.write(html.toByteArray()) }
         val meta = buildJsonObject {
             put("title", content.title ?: download.chapter.name)

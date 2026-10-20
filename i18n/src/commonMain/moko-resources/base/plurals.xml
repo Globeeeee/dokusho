@@ -114,4 +114,12 @@
         <item quantity="one">%1$d update failed</item>
         <item quantity="other">%1$d updates failed</item>
     </plurals>
+    <plurals name="export_complete">
+        <item quantity="one">Exported %1$d file</item>
+        <item quantity="other">Exported %1$d files</item>
+    </plurals>
+    <plurals name="export_skipped">
+        <item quantity="one">%1$d chapter skipped</item>
+        <item quantity="other">%1$d chapters skipped</item>
+    </plurals>
 </resources>

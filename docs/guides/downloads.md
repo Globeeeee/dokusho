@@ -70,3 +70,7 @@ chapters and change nothing for novels.
 Chapters you open online are kept in a 100 MB chapter cache, so recent ones reopen quickly and
 may open offline as text. Only downloads are sure to work offline, with their images. Clear the
 cache in **More** → **Settings** → **Data and storage** → **Clear chapter cache**.
+
+## Export downloaded chapters
+
+To read downloaded chapters in another app, export them as EPUB or PDF: see [Export](export.md).

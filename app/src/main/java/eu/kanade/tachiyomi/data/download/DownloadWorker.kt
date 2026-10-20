@@ -4,9 +4,11 @@ import android.content.Context
 import android.content.pm.ServiceInfo
 import android.os.Build
 import androidx.lifecycle.asFlow
+import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingWorkPolicy
 import androidx.work.ForegroundInfo
+import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
@@ -14,6 +16,7 @@ import androidx.work.WorkerParameters
 import dev.zacsweers.metro.Inject
 import eu.kanade.tachiyomi.data.notification.Notifications
 import eu.kanade.tachiyomi.util.system.activeNetworkState
+import eu.kanade.tachiyomi.util.system.connectivityManager
 import eu.kanade.tachiyomi.util.system.notificationBuilder
 import eu.kanade.tachiyomi.util.system.setForegroundSafely
 import kotlinx.coroutines.NonCancellable
@@ -63,7 +66,8 @@ class DownloadWorker(context: Context, workerParams: WorkerParameters) : Corouti
         var networkIssue = networkIssue()
         if (networkIssue != null) {
             downloader.stop(networkIssue)
-            return Result.failure()
+            // Runs again once the network allows it, instead of leaving the queue waiting for a manual resume
+            return Result.retry()
         }
 
         if (!downloader.start()) return Result.failure()
@@ -82,28 +86,49 @@ class DownloadWorker(context: Context, workerParams: WorkerParameters) : Corouti
             }
         }
 
-        return Result.success()
+        return if (networkIssue != null) Result.retry() else Result.success()
     }
 
     private fun networkIssue(): String? {
-        val state = applicationContext.activeNetworkState()
-        return when {
-            !state.isOnline -> applicationContext.getString(R.string.download_notifier_no_network)
-            downloadPreferences.downloadOnlyOverWifi.get() && !state.isWifi ->
-                applicationContext.getString(R.string.download_notifier_text_only_wifi)
-            else -> null
+        return when (networkIssue(applicationContext, downloadPreferences.downloadOnlyOverWifi.get())) {
+            NetworkIssue.Offline -> applicationContext.getString(R.string.download_notifier_no_network)
+            NetworkIssue.NoWifi -> applicationContext.getString(R.string.download_notifier_text_only_wifi)
+            null -> null
         }
     }
+
+    enum class NetworkIssue { Offline, NoWifi }
 
     companion object {
         private const val TAG = "Downloader"
 
-        fun start(context: Context) {
+        /**
+         * Queues the worker. It waits for a network that [wifiOnly] allows, the same rule the worker checks, so
+         * chapters queued offline or off Wi-Fi start on their own once one is back.
+         */
+        fun start(context: Context, wifiOnly: Boolean) {
             val request = OneTimeWorkRequestBuilder<DownloadWorker>()
                 .addTag(TAG)
+                .setConstraints(Constraints.Builder().setRequiredNetworkType(networkType(wifiOnly)).build())
                 .build()
             WorkManager.getInstance(context)
                 .enqueueUniqueWork(TAG, ExistingWorkPolicy.REPLACE, request)
+        }
+
+        /** Drops a worker still waiting for the network, so a paused or cleared queue doesn't start on its own. */
+        fun cancel(context: Context) {
+            WorkManager.getInstance(context).cancelUniqueWork(TAG)
+        }
+
+        fun networkType(wifiOnly: Boolean): NetworkType = if (wifiOnly) NetworkType.UNMETERED else NetworkType.CONNECTED
+
+        /** Why downloads can't run on the current network, if they can't. Only on Wi-Fi means not metered. */
+        fun networkIssue(context: Context, wifiOnly: Boolean): NetworkIssue? {
+            return when {
+                !context.activeNetworkState().isOnline -> NetworkIssue.Offline
+                wifiOnly && context.connectivityManager.isActiveNetworkMetered -> NetworkIssue.NoWifi
+                else -> null
+            }
         }
 
         fun isRunningFlow(context: Context): Flow<Boolean> {
