@@ -5,7 +5,7 @@ installable extensions, downloads them for offline reading, exports EPUB and PDF
 aloud in the background.
 
 Status (2026-10-19): repos created and pushed, Mihon-only files removed, Claude Code config
-in place. Phase 0 done and released as v0.1.0. Phase 1 done (text contract, Royal Road published). Phase 2 reader shipped in v0.2.0.
+in place. Phase 0 done and released as v0.1.0. Phase 1 done (text contract, Royal Road published). Phase 2 reader shipped in v0.1.1 (versionCode 3; code 2 was a deleted v0.2.0 release).
 
 ## Decisions taken
 
