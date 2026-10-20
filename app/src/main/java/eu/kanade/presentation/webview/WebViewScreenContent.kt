@@ -3,6 +3,7 @@ package eu.kanade.presentation.webview
 import android.content.pm.ApplicationInfo
 import android.graphics.Bitmap
 import android.os.Message
+import android.webkit.CookieManager
 import android.webkit.JsPromptResult
 import android.webkit.JsResult
 import android.webkit.RenderProcessGoneDetail
@@ -125,7 +126,13 @@ fun WebViewScreenContent(
                 super.onPageFinished(view, url)
                 scope.launch {
                     val html = view.getHtml()
-                    showCloudflareHelp = "window._cf_chl_opt" in html || "Ray ID is" in html
+                    val challenged = "window._cf_chl_opt" in html || "Ray ID is" in html
+                    showCloudflareHelp = challenged
+                    // The source request reads this same cookie store. Flush once the check is done
+                    // so a listing retry sees the clearance the WebView just earned.
+                    if (!challenged) {
+                        CookieManager.getInstance().flush()
+                    }
                 }
             }
 

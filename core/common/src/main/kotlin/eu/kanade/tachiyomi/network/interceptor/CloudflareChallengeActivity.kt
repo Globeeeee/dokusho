@@ -28,20 +28,36 @@ class CloudflareChallengeActivity : Activity() {
     private lateinit var url: String
     private var previousClearance: String? = null
 
-    private val checkClearance = object : Runnable {
-        override fun run() {
-            val clearance = CookieManager.getInstance().getCookie(url)
-                ?.split(';')
-                ?.map { it.trim() }
-                ?.firstOrNull { it.startsWith("$CLEARANCE_COOKIE=") }
-                ?.substringAfter('=')
-            if (!clearance.isNullOrBlank() && clearance != previousClearance) {
-                CookieManager.getInstance().flush()
-                finish()
+    private val checkClearance: Runnable = Runnable { pollPage() }
+
+    private fun pollPage() {
+        if (isFinishing || !::webView.isInitialized) return
+        val clearance = CookieManager.getInstance().getCookie(url)
+            ?.split(';')
+            ?.map { it.trim() }
+            ?.firstOrNull { it.startsWith("$CLEARANCE_COOKIE=") }
+            ?.substringAfter('=')
+        if (!clearance.isNullOrBlank() && clearance != previousClearance) {
+            markSolved()
+            return
+        }
+        webView.evaluateJavascript(DOCUMENT_HTML) { raw ->
+            if (isFinishing) return@evaluateJavascript
+            val html = decodeJsString(raw)
+            val blocked = isCloudflareBlockPage(html)
+            val challenge = isCloudflareChallengePage(html) || html.isBlank()
+            if (!blocked && !challenge && html.length > MIN_PAGE_LENGTH) {
+                markSolved()
             } else {
-                handler.postDelayed(this, POLL_MS)
+                handler.postDelayed(checkClearance, POLL_MS)
             }
         }
+    }
+
+    private fun markSolved() {
+        CookieManager.getInstance().flush()
+        solvedAt = System.currentTimeMillis()
+        finish()
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -106,5 +122,12 @@ class CloudflareChallengeActivity : Activity() {
         @Volatile
         var closedAt: Long = 0L
             private set
+
+        /** When the WebView actually showed the site, even if no new clearance cookie appeared. */
+        @Volatile
+        var solvedAt: Long = 0L
+            private set
+
+        private const val MIN_PAGE_LENGTH = 512
     }
 }
