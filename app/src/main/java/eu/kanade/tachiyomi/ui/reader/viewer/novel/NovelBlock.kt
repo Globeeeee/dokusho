@@ -38,9 +38,20 @@ object NovelHtml {
         .addTags("em", "i", "strong", "b", "u")
         .addTags("img")
         .addAttributes("img", "src")
-        .addProtocols("img", "src", "http", "https")
+        .addProtocols("img", "src", "http", "https", "content", "file")
 
     private val blockTags = setOf("p", "div", "h1", "h2", "h3", "h4", "h5", "h6", "blockquote", "hr")
+
+    /** Points images saved next to a downloaded chapter at their files; [resolve] maps a file name to a URI. */
+    fun resolveLocalImages(html: String, resolve: (String) -> String?): String {
+        if (!html.contains("<img")) return html
+        val document = Jsoup.parseBodyFragment(html)
+        document.select("img[src]").forEach { image ->
+            val src = image.attr("src")
+            if (!src.contains("://")) resolve(src)?.let { image.attr("src", it) }
+        }
+        return document.body().html()
+    }
 
     fun parse(html: String): List<NovelBlock> {
         val body = Jsoup.parseBodyFragment(Jsoup.clean(html, safelist)).body()

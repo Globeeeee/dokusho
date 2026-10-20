@@ -5,10 +5,12 @@ import eu.kanade.domain.chapter.model.toSChapter
 import eu.kanade.tachiyomi.data.cache.ChapterCache
 import eu.kanade.tachiyomi.data.download.DownloadManager
 import eu.kanade.tachiyomi.data.download.DownloadProvider
+import eu.kanade.tachiyomi.data.download.Downloader
 import eu.kanade.tachiyomi.source.NovelSource
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.online.HttpSource
 import eu.kanade.tachiyomi.ui.reader.model.ReaderChapter
+import eu.kanade.tachiyomi.ui.reader.viewer.novel.NovelHtml
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -93,6 +95,28 @@ class ChapterLoader(
             source,
         )
         return when {
+            isDownloaded && source is NovelSource -> NovelPageLoader(
+                chapter,
+                source,
+                chapterCache,
+                lockedMessage = context.stringResource(MR.strings.novel_chapter_locked),
+                emptyMessage = context.stringResource(MR.strings.novel_chapter_empty),
+                downloadedText = {
+                    val dir = downloadProvider.findChapterDir(
+                        dbChapter.name,
+                        dbChapter.scanlator,
+                        dbChapter.url,
+                        manga.title,
+                        source,
+                    )
+                    dir?.findFile(Downloader.NOVEL_CHAPTER_FILE)
+                        ?.openInputStream()
+                        ?.use { it.bufferedReader().readText() }
+                        ?.let { html ->
+                            NovelHtml.resolveLocalImages(html) { name -> dir.findFile(name)?.uri?.toString() }
+                        }
+                },
+            )
             isDownloaded -> DownloadPageLoader(
                 chapter,
                 manga,

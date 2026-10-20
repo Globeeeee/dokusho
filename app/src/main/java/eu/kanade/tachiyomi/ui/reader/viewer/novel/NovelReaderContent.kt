@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
@@ -38,21 +39,19 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
@@ -63,12 +62,15 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextIndent
 import androidx.compose.ui.unit.Constraints
-import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import dev.icerock.moko.resources.StringResource
 import eu.kanade.tachiyomi.ui.reader.loader.NovelPage
+import eu.kanade.tachiyomi.ui.reader.model.ReaderChapter
 import eu.kanade.tachiyomi.ui.reader.model.ViewerChapters
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences.NovelFont
@@ -76,17 +78,20 @@ import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences.NovelReadingMode
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences.NovelTheme
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import tachiyomi.core.common.preference.Preference
 import tachiyomi.i18n.MR
+import tachiyomi.presentation.core.components.CheckboxItem
+import tachiyomi.presentation.core.components.HeadingItem
+import tachiyomi.presentation.core.components.SettingsChipRow
+import tachiyomi.presentation.core.components.SliderItem
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.util.collectAsState
 import kotlin.math.roundToInt
 
 private val HEADER_HEIGHT = 40.dp
 private val FOOTER_HEIGHT = 32.dp
-
-// Velocity (px/s) of a fling past the chapter end that opens the next chapter.
-private const val FLING_TO_NEXT = 2500f
 
 private data class NovelColors(val background: Color, val text: Color, val muted: Color)
 
@@ -123,12 +128,24 @@ internal fun NovelReaderContent(
     val theme by preferences.novelTheme.collectAsState()
     val mode by preferences.novelReadingMode.collectAsState()
     val font by preferences.novelFont.collectAsState()
+    val paragraphSpacing by preferences.novelParagraphSpacing.collectAsState()
+    val justify by preferences.novelJustify.collectAsState()
+    val indent by preferences.novelIndent.collectAsState()
+    val customColors by preferences.novelCustomColors.collectAsState()
+    val customBackground by preferences.novelBackgroundColor.collectAsState()
+    val customText by preferences.novelTextColor.collectAsState()
     val readerTheme by preferences.readerTheme.collectAsState()
     val showPageNumber by preferences.showPageNumber.collectAsState()
     var showSettings by rememberSaveable { mutableStateOf(false) }
 
-    val colors = theme.resolve(readerTheme, isSystemInDarkTheme()).colors()
-    val styles = remember(fontSize, lineHeight, colors, font) {
+    val themeColors = theme.resolve(readerTheme, isSystemInDarkTheme()).colors()
+    val colors = if (customColors) {
+        val text = Color(customText)
+        NovelColors(Color(customBackground), text, text.copy(alpha = 0.6f))
+    } else {
+        themeColors
+    }
+    val styles = remember(fontSize, lineHeight, colors, font, paragraphSpacing, justify, indent) {
         val body = TextStyle(
             fontSize = fontSize.sp,
             lineHeight = (fontSize * lineHeight).sp,
@@ -139,6 +156,8 @@ internal fun NovelReaderContent(
                 NovelFont.SYSTEM -> FontFamily.Default
             },
             color = colors.text,
+            textAlign = if (justify) TextAlign.Justify else TextAlign.Start,
+            textIndent = if (indent) TextIndent(firstLine = (fontSize * 1.5f).sp) else TextIndent.None,
         )
         NovelStyles(
             body = body,
@@ -148,7 +167,7 @@ internal fun NovelReaderContent(
                 fontWeight = FontWeight.Bold,
             ),
             quote = body.copy(fontStyle = FontStyle.Italic),
-            spacing = (fontSize * 0.8f).roundToInt(),
+            spacing = paragraphSpacing,
         )
     }
 
@@ -164,14 +183,13 @@ internal fun NovelReaderContent(
             .background(colors.background),
     ) {
         // Key on the chapter so scroll and pager state start fresh at the requested paragraph.
-        key(chapter, mode) {
-            val start = chapter.requestedPage.coerceIn(0, (blocks.size - 1).coerceAtLeast(0))
-            if (mode == NovelReadingMode.SCROLL) {
-                ScrollReader(
-                    blocks, title, start, styles, colors, margin, hasNext, hasPrevious, showPageNumber, jumps, commands,
-                    actions,
-                )
-            } else {
+        if (mode == NovelReadingMode.SCROLL) {
+            // Not keyed on the chapter: the list spans neighbouring chapters and keeps its position.
+            ContinuousScrollReader(chapters, styles, colors, margin, showPageNumber, jumps, commands, actions)
+        } else {
+            // Key on the chapter so the pager starts fresh at the requested paragraph.
+            key(chapter, mode) {
+                val start = chapter.requestedPage.coerceIn(0, (blocks.size - 1).coerceAtLeast(0))
                 PagedReader(
                     blocks, title, start, styles, colors, margin, mode, hasNext, hasPrevious, showPageNumber, jumps,
                     commands, actions,
@@ -196,74 +214,117 @@ internal fun NovelReaderContent(
     }
 }
 
+private sealed interface ScrollItem {
+    val key: String
+}
+
+private class ChapterTitleItem(val chapter: ReaderChapter) : ScrollItem {
+    override val key = "title-${chapter.chapter.id}"
+}
+
+private class BlockItem(val chapter: ReaderChapter, val index: Int, val block: NovelBlock) : ScrollItem {
+    override val key = "block-${chapter.chapter.id}-$index"
+}
+
+private class TailItem(val loading: Boolean) : ScrollItem {
+    override val key = "tail"
+    val message get() = if (loading) MR.strings.novel_loading_chapter else MR.strings.novel_no_next_chapter
+}
+
+/** Previous, current and next chapters in one list, in reading order, for the ones already loaded. */
+private fun buildScrollItems(chapters: ViewerChapters): List<ScrollItem> = buildList {
+    listOfNotNull(chapters.prevChapter, chapters.currChapter, chapters.nextChapter).forEach { chapter ->
+        val blocks = chapter.pages?.filterIsInstance<NovelPage>() ?: return@forEach
+        add(ChapterTitleItem(chapter))
+        blocks.forEach { add(BlockItem(chapter, it.index, it.block)) }
+    }
+    val next = chapters.nextChapter
+    when {
+        next == null -> add(TailItem(loading = false))
+        next.pages == null -> add(TailItem(loading = true))
+    }
+}
+
+/**
+ * Scroll mode as one continuous strip across chapters, like the webtoon viewer: scrolling past the
+ * end of a chapter runs straight into the next one, and up into the previous one.
+ */
 @Composable
-private fun ScrollReader(
-    blocks: List<NovelBlock>,
-    title: String,
-    start: Int,
+private fun ContinuousScrollReader(
+    chapters: ViewerChapters,
     styles: NovelStyles,
     colors: NovelColors,
     margin: Int,
-    hasNext: Boolean,
-    hasPrevious: Boolean,
     showPageNumber: Boolean,
     jumps: SharedFlow<Int>,
     commands: MutableSharedFlow<NovelCommand>,
     actions: NovelReaderActions,
 ) {
-    // Item 0 is the chapter title, items 1..n the blocks, then the end-of-chapter footer.
-    val listState = rememberLazyListState(initialFirstVisibleItemIndex = if (start > 0) start + 1 else 0)
-    val density = LocalDensity.current
-    // Pulling past the end of the chapter by this much opens the next one, like Mihon's webtoon mode.
-    val continuePx = with(density) { 96.dp.toPx() }
-    val continueToNext = remember(listState, hasNext) {
-        object : NestedScrollConnection {
-            private var pulled = 0f
-            private var done = false
-
-            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
-                if (!hasNext || done) return Offset.Zero
-                if (available.y < 0 && !listState.canScrollForward) {
-                    pulled -= available.y
-                    if (pulled >= continuePx) {
-                        done = true
-                        actions.onNextChapter()
-                    }
-                } else if (available.y > 0 || listState.canScrollForward) {
-                    pulled = 0f
-                }
-                return Offset.Zero
-            }
-
-            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                if (hasNext && !done && available.y < -FLING_TO_NEXT && !listState.canScrollForward) {
-                    done = true
-                    actions.onNextChapter()
-                }
-                return Velocity.Zero
-            }
-        }
+    // Rebuild when a neighbouring chapter finishes loading, not only when the chapter set changes.
+    val itemsFlow = remember(chapters) {
+        val window = listOfNotNull(chapters.prevChapter, chapters.currChapter, chapters.nextChapter)
+        combine(window.map { it.stateFlow }) { buildScrollItems(chapters) }
     }
+    val scrollItems by itemsFlow.collectAsState(initial = buildScrollItems(chapters))
+    val currentItems by rememberUpdatedState(scrollItems)
+    val currentChapters by rememberUpdatedState(chapters)
+
+    fun indexOfBlock(chapter: ReaderChapter, block: Int): Int {
+        val list = currentItems
+        val exact = list.indexOfFirst { it is BlockItem && it.chapter == chapter && it.index == block }
+        if (exact >= 0) return exact
+        return list.indexOfFirst { it is ChapterTitleItem && it.chapter == chapter }.coerceAtLeast(0)
+    }
+
+    val start = chapters.currChapter.requestedPage
+    val listState = rememberLazyListState(
+        initialFirstVisibleItemIndex = if (start > 0) {
+            indexOfBlock(chapters.currChapter, start)
+        } else {
+            scrollItems.indexOfFirst { it is ChapterTitleItem && it.chapter == chapters.currChapter }.coerceAtLeast(0)
+        },
+    )
     var progress by remember { mutableIntStateOf(0) }
+    var lastShown by remember { mutableStateOf<Pair<ReaderChapter, Int>?>(null) }
 
-    LaunchedEffect(listState, blocks) {
-        snapshotFlow {
-            if (!listState.canScrollForward) {
-                blocks.lastIndex
-            } else {
-                (listState.firstVisibleItemIndex - 1).coerceAtLeast(
-                    0,
-                )
-            }
-        }
+    // Report the paragraph at the top of the screen; moving into another chapter makes it current.
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.firstVisibleItemIndex to listState.canScrollForward }
             .distinctUntilChanged()
-            .collect { index ->
-                actions.onBlockShown(index)
-                progress = if (blocks.isEmpty()) 0 else (index + 1) * 100 / blocks.size
-                if (blocks.isNotEmpty() && index >= blocks.size * 6 / 10) actions.onPreloadNext()
+            .collect { (first, canScrollForward) ->
+                val list = currentItems
+                val item = if (!canScrollForward) list.lastOrNull { it is BlockItem } else list.getOrNull(first)
+                val (chapter, block) = when (item) {
+                    is BlockItem -> item.chapter to item.index
+                    is ChapterTitleItem -> item.chapter to 0
+                    else -> return@collect
+                }
+                val previous = lastShown
+                val window = currentChapters.run { listOfNotNull(prevChapter, currChapter, nextChapter) }
+                val movedForward = previous != null && window.indexOf(chapter) > window.indexOf(previous.first)
+                if (previous != null && previous.first != chapter && movedForward) {
+                    // Leaving a chapter forwards: finish it first, so it is marked read even after a fast fling.
+                    previous.first.pages?.lastIndex?.let { actions.onBlockShownIn(previous.first, it) }
+                }
+                actions.onBlockShownIn(chapter, block)
+                lastShown = chapter to block
+                val size = chapter.pages?.size ?: 0
+                progress = if (size == 0) 0 else (block + 1) * 100 / size
+                if (size > 0 && block >= size * 6 / 10) actions.onPreloadNext()
+                if (block <= 2) actions.onPreloadPrevious()
             }
     }
-    LaunchedEffect(listState) { jumps.collect { listState.scrollToItem(it + 1) } }
+    // A chapter chosen from the menu (not reached by scrolling) moves the list to it.
+    LaunchedEffect(chapters.currChapter) {
+        val visible = (currentItems.getOrNull(listState.firstVisibleItemIndex) as? BlockItem)?.chapter
+            ?: (currentItems.getOrNull(listState.firstVisibleItemIndex) as? ChapterTitleItem)?.chapter
+        if (visible != chapters.currChapter) {
+            listState.scrollToItem(indexOfBlock(chapters.currChapter, chapters.currChapter.requestedPage))
+        }
+    }
+    LaunchedEffect(listState) {
+        jumps.collect { listState.scrollToItem(indexOfBlock(currentChapters.currChapter, it)) }
+    }
     LaunchedEffect(listState) {
         commands.collect { command ->
             val step = listState.layoutInfo.viewportSize.height * 0.85f
@@ -278,14 +339,40 @@ private fun ScrollReader(
             verticalArrangement = Arrangement.spacedBy(styles.spacing.dp),
             modifier = Modifier
                 .fillMaxSize()
-                .nestedScroll(continueToNext)
-                .tapZones(vertical = false, reversed = false, actions = actions, onPrevious = {
-                    commands.tryEmit(NovelCommand.Previous)
-                }, onNext = { commands.tryEmit(NovelCommand.Next) }),
+                .tapZones(
+                    vertical = false,
+                    reversed = false,
+                    actions = actions,
+                    onPrevious = { commands.tryEmit(NovelCommand.Previous) },
+                    onNext = { commands.tryEmit(NovelCommand.Next) },
+                ),
         ) {
-            item { Text(title, style = styles.heading, modifier = Modifier.padding(bottom = 8.dp)) }
-            itemsIndexed(blocks) { _, block -> BlockText(block, styles, colors) }
-            item { ChapterEnd(colors, hasNext, hasPrevious, actions) }
+            items(scrollItems, key = { it.key }) { item ->
+                when (item) {
+                    is ChapterTitleItem -> Column {
+                        Spacer(Modifier.height(8.dp))
+                        HorizontalDivider(color = colors.muted.copy(alpha = 0.3f))
+                        Spacer(Modifier.height(24.dp))
+                        Text(
+                            item.chapter.chapter.name,
+                            style = styles.heading,
+                            modifier = Modifier.padding(bottom = 8.dp),
+                        )
+                    }
+                    is BlockItem -> BlockText(item.block, styles, colors)
+                    is TailItem -> Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 48.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            stringResource(item.message),
+                            color = colors.muted,
+                        )
+                    }
+                }
+            }
         }
         if (showPageNumber) {
             Text(
@@ -594,93 +681,133 @@ private fun NovelSettingsSheet(preferences: ReaderPreferences, onDismiss: () -> 
 internal fun ColumnScope.NovelSettingsPage(preferences: ReaderPreferences) {
     val fontSize by preferences.novelFontSize.collectAsState()
     val lineHeight by preferences.novelLineHeight.collectAsState()
+    val paragraphSpacing by preferences.novelParagraphSpacing.collectAsState()
     val margin by preferences.novelHorizontalMargin.collectAsState()
     val theme by preferences.novelTheme.collectAsState()
     val mode by preferences.novelReadingMode.collectAsState()
     val font by preferences.novelFont.collectAsState()
 
-    Column(
-        Modifier.padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Label(stringResource(MR.strings.novel_reading_mode))
-        ChipRow(
-            options = listOf(
-                NovelReadingMode.SCROLL to stringResource(MR.strings.novel_mode_scroll),
-                NovelReadingMode.PAGED_LTR to stringResource(MR.strings.novel_mode_paged_ltr),
-                NovelReadingMode.PAGED_RTL to stringResource(MR.strings.novel_mode_paged_rtl),
-                NovelReadingMode.PAGED_VERTICAL to stringResource(MR.strings.novel_mode_paged_vertical),
-            ),
-            selected = mode,
-            onSelect = { preferences.novelReadingMode.set(it) },
-        )
-
-        Label("${stringResource(MR.strings.novel_font_size)}: $fontSize")
-        Slider(
-            value = fontSize.toFloat(),
-            onValueChange = { preferences.novelFontSize.set(it.roundToInt()) },
-            valueRange = 12f..32f,
-            steps = 19,
-        )
-
-        Label("${stringResource(MR.strings.novel_line_spacing)}: ${"%.1f".format(lineHeight)}")
-        Slider(
-            value = lineHeight,
-            onValueChange = { preferences.novelLineHeight.set((it * 10).roundToInt() / 10f) },
-            valueRange = 1.2f..2.2f,
-            steps = 9,
-        )
-
-        Label("${stringResource(MR.strings.novel_margins)}: $margin")
-        Slider(
-            value = margin.toFloat(),
-            onValueChange = { preferences.novelHorizontalMargin.set(it.roundToInt()) },
-            valueRange = 8f..48f,
-            steps = 9,
-        )
-
-        Label(stringResource(MR.strings.novel_font))
-        ChipRow(
-            options = listOf(
-                NovelFont.SERIF to stringResource(MR.strings.novel_font_serif),
-                NovelFont.SANS to stringResource(MR.strings.novel_font_sans),
-                NovelFont.MONO to stringResource(MR.strings.novel_font_mono),
-                NovelFont.SYSTEM to stringResource(MR.strings.novel_font_system),
-            ),
-            selected = font,
-            onSelect = { preferences.novelFont.set(it) },
-        )
-
-        Label(stringResource(MR.strings.novel_theme))
-        ChipRow(
-            options = listOf(
-                NovelTheme.AUTO to stringResource(MR.strings.novel_theme_auto),
-                NovelTheme.PAPER to stringResource(MR.strings.novel_theme_paper),
-                NovelTheme.SEPIA to stringResource(MR.strings.novel_theme_sepia),
-                NovelTheme.DARK to stringResource(MR.strings.novel_theme_dark),
-                NovelTheme.BLACK to stringResource(MR.strings.novel_theme_black),
-            ),
-            selected = theme,
-            onSelect = { preferences.novelTheme.set(it) },
-        )
-    }
-}
-
-@Composable
-private fun Label(text: String) {
-    Spacer(Modifier.height(8.dp))
-    Text(text, style = MaterialTheme.typography.labelLarge)
-}
-
-@Composable
-private fun <T> ChipRow(options: List<Pair<T, String>>, selected: T, onSelect: (T) -> Unit) {
-    Row(
-        Modifier.horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        options.forEach { (value, label) ->
-            FilterChip(selected = value == selected, onClick = { onSelect(value) }, label = { Text(label) })
+    SettingsChipRow(MR.strings.novel_reading_mode) {
+        NovelReadingMode.entries.forEach { value ->
+            FilterChip(
+                selected = mode == value,
+                onClick = { preferences.novelReadingMode.set(value) },
+                label = { Text(stringResource(value.labelRes)) },
+            )
         }
-        Spacer(Modifier.width(8.dp))
+    }
+
+    SettingsChipRow(MR.strings.novel_font) {
+        listOf(
+            NovelFont.SERIF to MR.strings.novel_font_serif,
+            NovelFont.SANS to MR.strings.novel_font_sans,
+            NovelFont.MONO to MR.strings.novel_font_mono,
+            NovelFont.SYSTEM to MR.strings.novel_font_system,
+        ).forEach { (value, label) ->
+            FilterChip(
+                selected = font == value,
+                onClick = { preferences.novelFont.set(value) },
+                label = { Text(stringResource(label)) },
+            )
+        }
+    }
+
+    SliderItem(
+        value = fontSize,
+        valueRange = 12..32,
+        label = stringResource(MR.strings.novel_font_size),
+        onChange = { preferences.novelFontSize.set(it) },
+        pillColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+    )
+    // Line spacing is stored as a float; the slider works in tenths.
+    SliderItem(
+        value = (lineHeight * 10).roundToInt(),
+        valueRange = 12..22,
+        label = stringResource(MR.strings.novel_line_spacing),
+        valueString = "%.1f".format(lineHeight),
+        onChange = { preferences.novelLineHeight.set(it / 10f) },
+        pillColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+    )
+    SliderItem(
+        value = paragraphSpacing,
+        valueRange = 0..40,
+        label = stringResource(MR.strings.novel_paragraph_spacing),
+        onChange = { preferences.novelParagraphSpacing.set(it) },
+        pillColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+    )
+    SliderItem(
+        value = margin,
+        valueRange = 8..48,
+        label = stringResource(MR.strings.novel_margins),
+        onChange = { preferences.novelHorizontalMargin.set(it) },
+        pillColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+    )
+    CheckboxItem(label = stringResource(MR.strings.novel_justify), pref = preferences.novelJustify)
+    CheckboxItem(label = stringResource(MR.strings.novel_indent), pref = preferences.novelIndent)
+
+    SettingsChipRow(MR.strings.novel_theme) {
+        listOf(
+            NovelTheme.AUTO to MR.strings.novel_theme_auto,
+            NovelTheme.PAPER to MR.strings.novel_theme_paper,
+            NovelTheme.SEPIA to MR.strings.novel_theme_sepia,
+            NovelTheme.DARK to MR.strings.novel_theme_dark,
+            NovelTheme.BLACK to MR.strings.novel_theme_black,
+        ).forEach { (value, label) ->
+            FilterChip(
+                selected = theme == value,
+                onClick = { preferences.novelTheme.set(value) },
+                label = { Text(stringResource(label)) },
+            )
+        }
     }
 }
+
+/** Text and background colors for novels; shown at the top of the Custom filter tab. */
+@Composable
+internal fun ColumnScope.NovelColorSettings(preferences: ReaderPreferences) {
+    val customColors by preferences.novelCustomColors.collectAsState()
+    CheckboxItem(label = stringResource(MR.strings.novel_custom_colors), pref = preferences.novelCustomColors)
+    if (!customColors) return
+
+    SettingsChipRow(MR.strings.novel_color_presets) {
+        COLOR_PRESETS.forEach { (label, colors) ->
+            FilterChip(
+                selected = false,
+                onClick = {
+                    preferences.novelBackgroundColor.set(colors.first)
+                    preferences.novelTextColor.set(colors.second)
+                },
+                label = { Text(stringResource(label)) },
+            )
+        }
+    }
+    ColorSliders(MR.strings.novel_background_color, preferences.novelBackgroundColor)
+    ColorSliders(MR.strings.novel_text_color, preferences.novelTextColor)
+}
+
+@Composable
+private fun ColorSliders(title: StringResource, preference: Preference<Int>) {
+    val color by preference.collectAsState()
+    HeadingItem(title)
+    listOf(
+        MR.strings.color_filter_r_value to 16,
+        MR.strings.color_filter_g_value to 8,
+        MR.strings.color_filter_b_value to 0,
+    ).forEach { (label, shift) ->
+        SliderItem(
+            value = (color shr shift) and 0xFF,
+            valueRange = 0..255,
+            steps = 0,
+            label = stringResource(label),
+            onChange = { value -> preference.set((color and (0xFF shl shift).inv()) or (value shl shift)) },
+            pillColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+        )
+    }
+}
+
+private val COLOR_PRESETS = listOf(
+    MR.strings.novel_theme_paper to (0xFFFBF6EC.toInt() to 0xFF2B2620.toInt()),
+    MR.strings.novel_theme_sepia to (0xFFF2E5C9.toInt() to 0xFF4A3B28.toInt()),
+    MR.strings.novel_preset_night to (0xFF1A1612.toInt() to 0xFFE6C9A0.toInt()),
+    MR.strings.novel_theme_black to (0xFF000000.toInt() to 0xFFC8C8C8.toInt()),
+)

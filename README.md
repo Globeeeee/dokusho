@@ -66,6 +66,9 @@ Available extensions:
 
 Extension source code: [dokusho-extensions-source](https://github.com/Globeeeee/dokusho-extensions-source).
 
+New to the app? Read the [getting started guide](docs/guides/getting-started.md). Stuck? See
+[troubleshooting](docs/guides/troubleshooting.md).
+
 ## What it will do
 
 | Area | Dokusho |

@@ -306,6 +306,22 @@ class ReaderPreferences(
 
     enum class NovelFont { SERIF, SANS, MONO, SYSTEM }
 
+    val novelParagraphSpacing: Preference<Int> = preferenceStore.getInt("pref_novel_paragraph_spacing", 14)
+
+    val novelJustify: Preference<Boolean> = preferenceStore.getBoolean("pref_novel_justify", false)
+
+    val novelIndent: Preference<Boolean> = preferenceStore.getBoolean("pref_novel_indent", false)
+
+    /** Own text and background colors instead of the theme's. */
+    val novelCustomColors: Preference<Boolean> = preferenceStore.getBoolean("pref_novel_custom_colors", false)
+
+    val novelBackgroundColor: Preference<Int> = preferenceStore.getInt(
+        "pref_novel_background_color",
+        0xFF000000.toInt(),
+    )
+
+    val novelTextColor: Preference<Int> = preferenceStore.getInt("pref_novel_text_color", 0xFFC8C8C8.toInt())
+
     val novelReadingMode: Preference<NovelReadingMode> =
         preferenceStore.getEnum("pref_novel_reading_mode", NovelReadingMode.SCROLL)
 

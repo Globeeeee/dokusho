@@ -48,6 +48,8 @@ class NetworkHelper(
             builder.addNetworkInterceptor(httpLoggingInterceptor)
         }
 
+        VpnConfig.from(preferences)?.let(builder::vpn)
+
         when (preferences.dohProvider.get()) {
             PREF_DOH_CLOUDFLARE -> builder.dohCloudflare()
             PREF_DOH_GOOGLE -> builder.dohGoogle()
@@ -63,6 +65,10 @@ class NetworkHelper(
             PREF_DOH_SHECAN -> builder.dohShecan()
             else -> builder
         }
+    }
+
+    init {
+        applyWebViewVpn(VpnConfig.from(preferences))
     }
 
     val client: OkHttpClient by lazy {

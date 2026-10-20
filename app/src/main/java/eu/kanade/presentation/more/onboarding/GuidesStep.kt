@@ -56,7 +56,7 @@ internal class GuidesStep(
     }
 }
 
-const val GETTING_STARTED_URL = "https://mihon.app/docs/guides/getting-started"
+const val GETTING_STARTED_URL = "https://github.com/Globeeeee/dokusho/blob/main/docs/guides/getting-started.md"
 
 @PreviewLightDark
 @Composable

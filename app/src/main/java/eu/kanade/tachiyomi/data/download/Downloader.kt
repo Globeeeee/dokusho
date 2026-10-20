@@ -11,7 +11,10 @@ import eu.kanade.tachiyomi.data.cache.ChapterCache
 import eu.kanade.tachiyomi.data.download.model.Download
 import eu.kanade.tachiyomi.data.library.LibraryUpdateNotifier
 import eu.kanade.tachiyomi.data.notification.NotificationHandler
+import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.network.HttpException
+import eu.kanade.tachiyomi.network.awaitSuccess
+import eu.kanade.tachiyomi.source.NovelSource
 import eu.kanade.tachiyomi.source.UnmeteredSource
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.online.HttpSource
@@ -47,11 +50,14 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import logcat.LogPriority
 import mihon.core.archive.ZipWriter
 import mihon.core.metro.AppCoroutineScope
 import nl.adaptivity.xmlutil.serialization.XML
 import okhttp3.Response
+import org.jsoup.Jsoup
 import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.core.common.util.system.ImageUtil
 import tachiyomi.core.common.util.system.logcat
@@ -446,6 +452,16 @@ class Downloader(
         val tmpDir = mangaDir.createDirectory(chapterDirname + TMP_DIR_SUFFIX)!!
 
         try {
+            // Novel chapters are text: one chapter.html instead of page images.
+            if (download.source is NovelSource) {
+                downloadNovelChapter(download, tmpDir)
+                pagesStarted.complete(Unit)
+                tmpDir.renameTo(chapterDirname)
+                cache.addChapter(chapterDirname, mangaDir, download.manga)
+                download.status = Download.State.DOWNLOADED
+                return
+            }
+
             // If the page list already exists, start from the file
             val pageList = download.pages ?: run {
                 // Otherwise, pull page list from network and add them to download object
@@ -662,6 +678,43 @@ class Downloader(
         }
     }
 
+    /** Saves a novel chapter's sanitized text as [NOVEL_CHAPTER_FILE] plus a small [NOVEL_META_FILE]. */
+    private suspend fun downloadNovelChapter(download: Download, tmpDir: UniFile) {
+        download.status = Download.State.DOWNLOADING
+        val content = (download.source as NovelSource).getChapterContent(download.chapter.toSChapter())
+        if (content.locked || content.html.isBlank()) {
+            val reason = if (content.locked) MR.strings.novel_download_locked else MR.strings.novel_chapter_empty
+            throw Exception(context.stringResource(reason))
+        }
+        // Save each image next to the text so the chapter reads fully offline; a failed image keeps its web address.
+        val document = Jsoup.parseBodyFragment(content.html)
+        val httpSource = download.source as? HttpSource
+        document.select("img[src]").forEachIndexed { index, image ->
+            val url = image.attr("src")
+            if (httpSource == null || !url.startsWith("http")) return@forEachIndexed
+            try {
+                httpSource.client.newCall(GET(url, httpSource.headers)).awaitSuccess().use { response ->
+                    val extension = url.substringBefore('?').substringAfterLast('.', "").lowercase()
+                        .takeIf { it in NOVEL_IMAGE_EXTENSIONS } ?: "jpg"
+                    val name = "image_%03d.%s".format(index + 1, extension)
+                    tmpDir.createFile(name)!!.openOutputStream().use { response.body.byteStream().copyTo(it) }
+                    image.attr("src", name)
+                }
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                logcat(LogPriority.WARN, e) { "Novel image not saved, keeping its web address" }
+            }
+        }
+        val html = document.body().html()
+        tmpDir.createFile(NOVEL_CHAPTER_FILE)!!.openOutputStream().use { it.write(html.toByteArray()) }
+        val meta = buildJsonObject {
+            put("title", content.title ?: download.chapter.name)
+            put("url", download.chapter.url)
+            put("fetchedAt", System.currentTimeMillis())
+        }
+        tmpDir.createFile(NOVEL_META_FILE)!!.openOutputStream().use { it.write(meta.toString().toByteArray()) }
+    }
+
     /**
      * Checks if the download was successful.
      *
@@ -864,6 +917,11 @@ class Downloader(
 
     companion object {
         const val TMP_DIR_SUFFIX = "_tmp"
+
+        /** Text of a downloaded novel chapter, inside the chapter folder. */
+        const val NOVEL_CHAPTER_FILE = "chapter.html"
+        const val NOVEL_META_FILE = "meta.json"
+        private val NOVEL_IMAGE_EXTENSIONS = setOf("jpg", "jpeg", "png", "gif", "webp", "avif")
         const val WARNING_NOTIF_TIMEOUT_MS = 30_000L
         const val CHAPTERS_PER_SOURCE_QUEUE_WARNING_THRESHOLD = 15
         private const val DOWNLOADS_QUEUED_WARNING_THRESHOLD = 30

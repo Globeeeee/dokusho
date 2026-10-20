@@ -20,13 +20,18 @@ internal class NovelPageLoader(
     private val chapterCache: ChapterCache,
     private val lockedMessage: String,
     private val emptyMessage: String,
+    /** Reads a downloaded chapter.html; null when the chapter is not downloaded. */
+    private val downloadedText: (suspend () -> String?)? = null,
 ) : PageLoader() {
 
+    /** True once the text came from a download, so download-ahead treats it like a downloaded chapter. */
     override var isLocal: Boolean = false
 
     override suspend fun getPages(): List<ReaderPage> {
         val dbChapter = chapter.chapter
-        val html = chapterCache.getChapterText(dbChapter) ?: run {
+        val downloaded = downloadedText?.invoke()
+        if (downloaded != null) isLocal = true
+        val html = downloaded ?: chapterCache.getChapterText(dbChapter) ?: run {
             val content = source.getChapterContent(dbChapter.toSChapter())
             if (content.locked) {
                 return listOf(NovelPage(0, NovelBlock.Paragraph(AnnotatedString(lockedMessage))))

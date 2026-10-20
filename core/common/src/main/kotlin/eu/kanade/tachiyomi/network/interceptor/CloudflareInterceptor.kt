@@ -1,7 +1,9 @@
 package eu.kanade.tachiyomi.network.interceptor
 
 import android.annotation.SuppressLint
+import android.app.ActivityManager
 import android.content.Context
+import android.content.Intent
 import android.webkit.JavascriptInterface
 import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebResourceRequest
@@ -115,6 +117,39 @@ class CloudflareInterceptor(
         }
     }
 
+    /**
+     * Opens [CloudflareChallengeActivity] for [challengeUrl] with the request's user agent, so the
+     * clearance it earns is valid for the request, and waits until a new clearance appears, the
+     * user closes the page, or [INTERACTIVE_TIMEOUT_MS] passes.
+     */
+    private fun solveInteractively(
+        request: Request,
+        challengeUrl: String,
+        headers: Map<String, String>,
+        previousClearance: String?,
+    ): Boolean {
+        val openedAt = System.currentTimeMillis()
+        val intent = Intent()
+            .setClassName(context, CloudflareChallengeActivity::class.java.name)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            .putExtra(CloudflareChallengeActivity.EXTRA_URL, challengeUrl)
+            .putExtra(CloudflareChallengeActivity.EXTRA_USER_AGENT, request.header("User-Agent"))
+            .putExtra(CloudflareChallengeActivity.EXTRA_HEADERS, HashMap(headers))
+            .putExtra(CloudflareChallengeActivity.EXTRA_PREVIOUS_CLEARANCE, previousClearance)
+        try {
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            logcat(LogPriority.ERROR, e) { "Could not open the Cloudflare check" }
+            return false
+        }
+        while (System.currentTimeMillis() - openedAt < INTERACTIVE_TIMEOUT_MS) {
+            if (isCleared(request.url, previousClearance)) return true
+            if (CloudflareChallengeActivity.closedAt > openedAt) return isCleared(request.url, previousClearance)
+            Thread.sleep(INTERACTIVE_POLL_MS)
+        }
+        return false
+    }
+
     @SuppressLint("SetJavaScriptEnabled")
     private fun resolveWithWebView(originalRequest: Request, originalClearance: String?) {
         // We need to lock this thread until the WebView finds the challenge solution url, because
@@ -126,6 +161,7 @@ class CloudflareInterceptor(
         val useIsolatedWorld = WebViewFeature.isFeatureSupported(WebViewFeature.JS_INJECTION_IN_FRAME_AND_WORLD)
 
         var challengeFound = false
+        var challengeInteractive = false
         var cloudflareBypassed = false
         var challengeFailed = false
         var isWebViewOutdated = false
@@ -147,8 +183,11 @@ class CloudflareInterceptor(
 
             fun onChallengeEvent(event: String) {
                 when (event) {
-                    // The challenge cannot be solved non-interactively, abort.
-                    "interactiveBegin" -> latch.countDown()
+                    // The challenge cannot be solved non-interactively; hand it to the user below.
+                    "interactiveBegin" -> {
+                        challengeInteractive = true
+                        latch.countDown()
+                    }
                     "fail" -> {
                         challengeFailed = true
                         latch.countDown()
@@ -255,6 +294,11 @@ class CloudflareInterceptor(
             }
         }
 
+        // Dokusho: a check that needs a person is shown to the user while the app is in use, instead of failing.
+        if (!cloudflareBypassed && challengeInteractive && !isRenderProcessGone && isAppInForeground()) {
+            cloudflareBypassed = solveInteractively(originalRequest, challengeUrl, headers, originalClearance)
+        }
+
         // Throw exception if we failed to bypass Cloudflare
         if (!cloudflareBypassed) {
             // A clearance from a failed challenge would only be rejected again
@@ -269,12 +313,19 @@ class CloudflareInterceptor(
     }
 }
 
+private fun CloudflareInterceptor.isAppInForeground(): Boolean {
+    val state = ActivityManager.RunningAppProcessInfo().also(ActivityManager::getMyMemoryState)
+    return state.importance <= ActivityManager.RunningAppProcessInfo.IMPORTANCE_VISIBLE
+}
+
 // An origin rule without a port only matches the scheme's default one
 private fun HttpUrl.origin(): String {
     return if (port == HttpUrl.defaultPort(scheme)) "$scheme://$host" else "$scheme://$host:$port"
 }
 
 private val SERVER_CHECK = arrayOf("cloudflare-nginx", "cloudflare")
+private const val INTERACTIVE_TIMEOUT_MS = 180_000L
+private const val INTERACTIVE_POLL_MS = 500L
 private val COOKIE_NAMES = listOf("cf_clearance")
 
 private class CloudflareBypassException : Exception()

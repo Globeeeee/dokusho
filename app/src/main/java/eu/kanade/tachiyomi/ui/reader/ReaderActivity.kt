@@ -74,6 +74,8 @@ import eu.kanade.tachiyomi.ui.reader.setting.ReaderSettingsViewModel
 import eu.kanade.tachiyomi.ui.reader.setting.ReadingMode
 import eu.kanade.tachiyomi.ui.reader.viewer.ReaderProgressIndicator
 import eu.kanade.tachiyomi.ui.reader.viewer.novel.NovelViewer
+import eu.kanade.tachiyomi.ui.reader.viewer.novel.asReadingMode
+import eu.kanade.tachiyomi.ui.reader.viewer.novel.labelRes
 import eu.kanade.tachiyomi.ui.reader.viewer.pager.R2LPagerViewer
 import eu.kanade.tachiyomi.ui.reader.viewer.webgpu.WebGpuViewer
 import eu.kanade.tachiyomi.ui.webview.WebViewActivity
@@ -453,6 +455,7 @@ class ReaderActivity : BaseActivity() {
         val isPagerType = ReadingMode.isPagerType(viewModel.getMangaReadingMode())
         val cropEnabled = if (isPagerType) cropBorderPaged else cropBorderWebtoon
 
+        val novelReadingMode by readerPreferences.novelReadingMode.collectAsState()
         val verticalNavigatorModes by readerPreferences.verticalNavigator.collectAsState()
         val verticalNavigator = verticalNavigatorModes.contains(
             ReadingMode.fromPreference(viewModel.getMangaReadingMode()),
@@ -501,10 +504,14 @@ class ReaderActivity : BaseActivity() {
                 isScrollingThroughPages = false
             },
 
-            readingMode = ReadingMode.fromPreference(
-                viewModel.getMangaReadingMode(resolveDefault = false),
-            ),
-            onClickReadingMode = viewModel::openReadingModeSelectDialog,
+            readingMode = if (viewModel.isNovelSource()) {
+                novelReadingMode.asReadingMode()
+            } else {
+                ReadingMode.fromPreference(viewModel.getMangaReadingMode(resolveDefault = false))
+            },
+            onClickReadingMode = {
+                if (viewModel.isNovelSource()) cycleNovelReadingMode() else viewModel.openReadingModeSelectDialog()
+            },
             orientation = ReaderOrientation.fromPreference(
                 viewModel.getMangaOrientation(resolveDefault = false),
             ),
@@ -561,7 +568,11 @@ class ReaderActivity : BaseActivity() {
         binding.viewerContainer.addView(newViewer.getView())
 
         if (readerPreferences.showReadingMode.get()) {
-            showReadingModeToast(viewModel.getMangaReadingMode())
+            if (viewModel.isNovelSource()) {
+                showNovelReadingModeToast(readerPreferences.novelReadingMode.get())
+            } else {
+                showReadingModeToast(viewModel.getMangaReadingMode())
+            }
         }
 
         loadingIndicator = ReaderProgressIndicator(this)
@@ -602,6 +613,19 @@ class ReaderActivity : BaseActivity() {
             val intent = it.toUri().toShareIntent(this, type = "text/plain")
             startActivity(intent)
         }
+    }
+
+    /** The bottom bar's reading-mode button steps through the novel modes for novel sources. */
+    private fun cycleNovelReadingMode() {
+        val modes = ReaderPreferences.NovelReadingMode.entries
+        val next = modes[(readerPreferences.novelReadingMode.get().ordinal + 1) % modes.size]
+        readerPreferences.novelReadingMode.set(next)
+        showNovelReadingModeToast(next)
+    }
+
+    private fun showNovelReadingModeToast(mode: ReaderPreferences.NovelReadingMode) {
+        readingModeToast?.cancel()
+        readingModeToast = toast(mode.labelRes)
     }
 
     private fun showReadingModeToast(mode: Int) {

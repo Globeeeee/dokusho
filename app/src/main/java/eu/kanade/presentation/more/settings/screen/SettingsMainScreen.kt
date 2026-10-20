@@ -40,6 +40,7 @@ import mihon.icons.materialsymbols.rounded.Download
 import mihon.icons.materialsymbols.rounded.Explore
 import mihon.icons.materialsymbols.rounded.Info
 import mihon.icons.materialsymbols.rounded.Palette
+import mihon.icons.materialsymbols.rounded.Public
 import mihon.icons.materialsymbols.rounded.Search
 import mihon.icons.materialsymbols.rounded.Security
 import mihon.icons.materialsymbols.rounded.Storage
@@ -206,6 +207,12 @@ object SettingsMainScreen : Screen() {
             subtitleRes = MR.strings.pref_browse_summary,
             icon = MaterialSymbols.Rounded.Explore,
             screen = SettingsBrowseScreen,
+        ),
+        Item(
+            titleRes = MR.strings.pref_category_vpn,
+            subtitleRes = MR.strings.pref_vpn_summary,
+            icon = MaterialSymbols.Rounded.Public,
+            screen = SettingsVpnScreen,
         ),
         Item(
             titleRes = MR.strings.label_data_storage,

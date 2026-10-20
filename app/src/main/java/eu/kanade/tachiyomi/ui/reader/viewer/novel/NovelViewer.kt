@@ -6,11 +6,14 @@ import android.view.View
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.ComposeView
+import dev.icerock.moko.resources.StringResource
 import eu.kanade.presentation.theme.TachiyomiTheme
 import eu.kanade.tachiyomi.ui.reader.ReaderActivity
 import eu.kanade.tachiyomi.ui.reader.model.ReaderChapter
 import eu.kanade.tachiyomi.ui.reader.model.ReaderPage
 import eu.kanade.tachiyomi.ui.reader.model.ViewerChapters
+import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences.NovelReadingMode
+import eu.kanade.tachiyomi.ui.reader.setting.ReadingMode
 import eu.kanade.tachiyomi.ui.reader.viewer.Viewer
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
@@ -19,6 +22,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import mihon.app.di.appGraph
+import tachiyomi.i18n.MR
 
 /**
  * Viewer for text chapters from a NovelSource. Each paragraph is one [ReaderPage], so the reader's
@@ -39,7 +43,17 @@ class NovelViewer(val activity: ReaderActivity) : Viewer {
             pages.getOrNull(index.coerceIn(0, pages.lastIndex))?.let(activity::onPageSelected)
         }
 
+        override fun onBlockShownIn(chapter: ReaderChapter, index: Int) {
+            val pages = chapter.pages ?: return
+            pages.getOrNull(index.coerceIn(0, pages.lastIndex))?.let(activity::onPageSelected)
+        }
+
         override fun onToggleMenu() = activity.toggleMenu()
+
+        override fun onPreloadPrevious() {
+            val previous = chapters.value?.prevChapter ?: return
+            if (previous.state is ReaderChapter.State.Wait) activity.requestPreloadChapter(previous)
+        }
 
         override fun onPreloadNext() {
             val next = chapters.value?.nextChapter ?: return
@@ -114,10 +128,30 @@ class NovelViewer(val activity: ReaderActivity) : Viewer {
 
 internal enum class NovelCommand { Next, Previous }
 
+internal val NovelReadingMode.labelRes: StringResource
+    get() = when (this) {
+        NovelReadingMode.SCROLL -> MR.strings.novel_mode_scroll
+        NovelReadingMode.PAGED_LTR -> MR.strings.novel_mode_paged_ltr
+        NovelReadingMode.PAGED_RTL -> MR.strings.novel_mode_paged_rtl
+        NovelReadingMode.PAGED_VERTICAL -> MR.strings.novel_mode_paged_vertical
+    }
+
+/** The image reading mode whose icon matches a novel mode, for the reader's bottom bar. */
+internal fun NovelReadingMode.asReadingMode(): ReadingMode = when (this) {
+    NovelReadingMode.SCROLL -> ReadingMode.WEBTOON
+    NovelReadingMode.PAGED_LTR -> ReadingMode.LEFT_TO_RIGHT
+    NovelReadingMode.PAGED_RTL -> ReadingMode.RIGHT_TO_LEFT
+    NovelReadingMode.PAGED_VERTICAL -> ReadingMode.VERTICAL
+}
+
 internal interface NovelReaderActions {
     fun onBlockShown(index: Int)
+
+    /** A paragraph of [chapter] reached the top of the screen; used by the continuous scroll mode. */
+    fun onBlockShownIn(chapter: ReaderChapter, index: Int)
     fun onToggleMenu()
     fun onPreloadNext()
+    fun onPreloadPrevious()
     fun onNextChapter()
     fun onPreviousChapter()
 }

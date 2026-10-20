@@ -6,7 +6,7 @@ aloud in the background.
 
 Status (2026-10-20): phase 0 and phase 1 done. Phase 2 reader built and released as v0.1.1
 (versionCode 3; code 2 belonged to a withdrawn v0.2.0). Royal Road extension published to the
-store. Next: device test of v0.1.1, then phase 3 (offline downloads) and Scribble Hub.
+store. Phases 2 and 3 shipped up to v0.1.5 (Cloudflare challenge on screen, downloads, continuous scroll, VPN setting). Next: novel local source (EPUB, TXT), then export.
 
 | Phase | State |
 |-------|-------|
@@ -156,7 +156,8 @@ MVP = phases 0 to 4, roughly 3 weeks.
 - MangaUpdates tracker (covers LOTM and Reverend Insanity as Novel, not Shadow Slave): needs only a free account, no OAuth registration; enable with `listOf(mangaUpdates)` in `TrackerManager.trackers`. NovelUpdates has no public API.
 - Import from a tracker list: read the user's MangaUpdates (or AniList) list, search each title across installed extensions, add matches to the library. Revisit when trackers come back; until then library and progress stay local only.
 - Public release: store listing, F-Droid, translations. Settle the name first (see Decisions).
-- Replace the 7 help links that still open mihon.app docs (onboarding guide, troubleshooting, storage FAQ, source migration, tracking guide, Cloudflare tip, bulk update warning) with a Dokusho help page.
+- [x] Help links point to `docs/guides/` (getting started, troubleshooting) instead of mihon.app. Local source help still pending with the novel local source.
+- [x] VPN setting (Settings → VPN): SOCKS5 or HTTP proxy for Dokusho's OkHttp and WebView traffic, connection check. A built-in Dokusho server is an open decision.
 
 ### 7. Polish and release
 - Strings: English `base` first ("manga" to "novel"); other locales fall back where untranslated.

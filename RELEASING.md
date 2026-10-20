@@ -12,9 +12,10 @@ an APK people can download from GitHub, and how extensions get published.
 | v0.1.1 | 3 | 2026-10-20 | Novel reader with four reading modes, lib 2.0 extensions (Royal Road) | published |
 | v0.1.2 | 4 | 2026-10-20 | Fix: library and novel details no longer load forever when no tracker is enabled | published |
 | v0.1.3 | 5 | 2026-10-20 | Reader follows the black/gray/white background, novel options in the reader's Reading mode tab and in Settings → Reader, page numbers, automatic next chapter | published |
-| v0.1.4 | 6 | 2026-10-20 | Font choice, images in chapters, cached chapter text, General tab shows only text options for novels | **latest** |
+| v0.1.4 | 6 | 2026-10-20 | Font choice, images in chapters, cached chapter text, General tab shows only text options for novels | published |
+| v0.1.5 | 7 | 2026-10-20 | Cloudflare checks shown on screen, offline downloads with images, continuous scroll across chapters, custom colors, VPN setting, new empty library screen, Dokusho guides | **latest** |
 
-**Next release: `versionCode = 7`.** Code 2 is used up by the withdrawn v0.2.0 and can never
+**Next release: `versionCode = 8`.** Code 2 is used up by the withdrawn v0.2.0 and can never
 be reused, so the codes skip a number. That is fine; Android only cares that each one is bigger.
 
 ## The short version

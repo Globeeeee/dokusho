@@ -6,6 +6,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import cafe.adriel.voyager.navigator.Navigator
@@ -25,6 +26,7 @@ import eu.kanade.tachiyomi.ui.main.MainActivity
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.i18n.stringResource
@@ -78,6 +80,8 @@ data object BrowseTab : Tab {
             onChangeSearchQuery = extensionsViewModel::search,
         )
         LaunchedEffect(Unit) {
+            // Wait for the pager's first layout, or a jump sent while Browse opens is dropped.
+            snapshotFlow { state.layoutInfo.visiblePagesInfo.isNotEmpty() }.first { it }
             switchToExtensionTabChannel.receiveAsFlow()
                 .collectLatest { state.scrollToPage(1) }
         }
