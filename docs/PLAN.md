@@ -124,12 +124,13 @@ Design detail for each row: `.claude/rules/novel.md`.
 ### 4. First extensions (3 days, then ongoing)
 Detail and site list in `dokusho-extensions-source/docs/PLAN.md`.
 - [x] Royal Road: published (2.0.1)
-- [x] Scribble Hub: built and pushed for publishing (2.0.1)
-- [x] Wattpad and WuxiaWorld (official, free chapters; locked ones marked) built and pushed for publishing
+- [x] Scribble Hub: published (2.0.1); Cloudflare check handled on screen since v0.1.5
+- [x] Wattpad and WuxiaWorld (official, free chapters; locked ones marked): published (2.0.1)
+- [x] Project Gutenberg and Syosetu: published (2.0.1); Gutenberg moving to its own OPDS feed (2.0.2) after timeouts
 - [ ] Archive of Our Own: waiting for AO3's server (down during recon)
 - [ ] Webnovel (official): WebView login, cookie reuse, locked chapters shown as locked
 - [x] Publish pipeline: extension key and secrets, CI builds, signs and writes `index.pb` and `index.json`; fixed the stub variant and the PKCS12 key password on the way
-- [x] `index.pb` loads in the app and lists Royal Road (seen on v0.1.0)
+- [x] `index.pb` loads in the app; six extensions install, list and browse on device (2026-10-20)
 - Not building: shadowslave.space, freewebnovel.com, novellive.com, wuxiaworld.eu, readnovelfull.com, novelhi.com, noveltrust.com and similar, which republish paid chapters without permission (decision 2026-10-20, see Decisions).
 
 MVP = phases 0 to 4, roughly 3 weeks.
