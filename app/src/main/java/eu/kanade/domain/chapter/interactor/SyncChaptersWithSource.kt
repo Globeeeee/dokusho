@@ -8,6 +8,7 @@ import eu.kanade.domain.manga.interactor.UpdateManga
 import eu.kanade.domain.manga.model.toSManga
 import eu.kanade.tachiyomi.data.download.DownloadManager
 import eu.kanade.tachiyomi.data.download.DownloadProvider
+import eu.kanade.tachiyomi.data.library.ChapterDateTracker
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.online.HttpSource
@@ -24,7 +25,6 @@ import tachiyomi.domain.chapter.service.ChapterRecognition
 import tachiyomi.domain.library.service.LibraryPreferences
 import tachiyomi.domain.manga.model.Manga
 import tachiyomi.source.local.isLocal
-import java.lang.Long.max
 import java.util.TreeSet
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.milliseconds
@@ -80,10 +80,6 @@ class SyncChaptersWithSource(
         val updatedChapters = mutableListOf<ChapterRemoteUpdate>()
         val sourceUrls = mutableSetOf<String>()
 
-        // Used to not set upload date of older chapters
-        // to a higher value than newer chapters
-        var maxSeenUploadDate: Instant? = null
-
         // Update metadata from source if necessary.
         val preparedChapters = if (source is HttpSource) {
             val sManga = manga.toSManga()
@@ -109,15 +105,16 @@ class SyncChaptersWithSource(
             val dbChapter = dbChaptersByUrl[chapter.url]
 
             if (dbChapter == null) {
-                val toAddChapter = if (chapter.dateUpload == null) {
-                    chapter.copy(dateUpload = maxSeenUploadDate ?: nowInstant)
-                } else {
-                    maxSeenUploadDate = listOfNotNull(maxSeenUploadDate, chapter.dateUpload).maxOrNull()
-                    chapter
-                }
-                newChapters.add(toAddChapter)
+                // A missing source date stays empty. Stamping "now" made every chapter look like today.
+                newChapters.add(chapter)
             } else {
-                if (shouldUpdateDbChapter.await(dbChapter, chapter)) {
+                val resolvedDate = ChapterDateTracker.uploadDate(
+                    source = chapter.dateUpload,
+                    stored = dbChapter.dateUpload,
+                    fetchedAt = dbChapter.dateFetch,
+                )
+                val merged = chapter.copy(dateUpload = resolvedDate)
+                if (shouldUpdateDbChapter.await(dbChapter, merged)) {
                     val shouldRenameChapter = downloadProvider.isChapterDirNameChanged(dbChapter, chapter) &&
                         downloadManager.isChapterDownloaded(
                             dbChapter.name,
@@ -128,18 +125,18 @@ class SyncChaptersWithSource(
                         )
 
                     if (shouldRenameChapter) {
-                        downloadManager.renameChapter(source, manga, dbChapter, chapter)
+                        downloadManager.renameChapter(source, manga, dbChapter, merged)
                     }
 
                     updatedChapters.add(
                         ChapterRemoteUpdate(
                             id = dbChapter.id,
-                            name = chapter.name,
-                            chapterNumber = chapter.chapterNumber,
-                            scanlator = chapter.scanlator,
-                            sourceOrder = chapter.sourceOrder,
-                            dateUpload = chapter.dateUpload,
-                            memo = chapter.memo,
+                            name = merged.name,
+                            chapterNumber = merged.chapterNumber,
+                            scanlator = merged.scanlator,
+                            sourceOrder = merged.sourceOrder,
+                            dateUpload = merged.dateUpload,
+                            memo = merged.memo,
                         ),
                     )
                 }

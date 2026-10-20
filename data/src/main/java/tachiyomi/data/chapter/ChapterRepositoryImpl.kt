@@ -168,6 +168,10 @@ class ChapterRepositoryImpl(
             .awaitAsOneOrNull()
     }
 
+    override suspend fun clearFetchStampedUploadDates() {
+        database.chapterQueries.clearFetchStampedUploadDates()
+    }
+
     private fun mapChapter(
         id: Long,
         mangaId: Long,

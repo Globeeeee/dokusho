@@ -122,12 +122,18 @@ SET user_read = coalesce(:userRead, user_read),
     remote_memo = coalesce(:remoteMemo, remote_memo)
 WHERE id = :id;
 
+clearFetchStampedUploadDates:
+UPDATE chapter
+SET remote_date_upload = NULL
+WHERE remote_date_upload IS NOT NULL
+  AND abs(remote_date_upload - state_date_fetch) < 120000;
+
 updateRemote:
 UPDATE chapter
 SET remote_name = :remoteName,
     remote_scanlator = coalesce(:remoteScanlator, remote_scanlator),
     remote_chapter_number = :remoteChapterNumber,
     remote_order = :remoteOrder,
-    remote_date_upload = coalesce(:remoteDateUpload, remote_date_upload),
+    remote_date_upload = :remoteDateUpload,
     remote_memo = :remoteMemo
 WHERE id = :id;

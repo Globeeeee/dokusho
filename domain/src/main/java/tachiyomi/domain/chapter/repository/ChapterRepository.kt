@@ -35,4 +35,7 @@ interface ChapterRepository {
     suspend fun getChapterByMangaIdAsFlow(mangaId: Long, applyScanlatorFilter: Boolean = false): Flow<List<Chapter>>
 
     suspend fun getChapterByUrlAndMangaId(url: String, mangaId: Long): Chapter?
+
+    /** Clears upload dates that were only stamped at fetch time, so they no longer read as "today". */
+    suspend fun clearFetchStampedUploadDates()
 }
