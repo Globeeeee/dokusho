@@ -124,8 +124,10 @@ abstract class SearchViewModel(
         preferences.globalSearchFilterState.toggle()
     }
 
-    fun search() {
-        val query = state.value.searchQuery
+    fun search(query: String? = state.value.searchQuery) {
+        if (!query.isNullOrBlank() && query != state.value.searchQuery) {
+            state.update { it.copy(searchQuery = query) }
+        }
         val sourceFilter = state.value.sourceFilter
 
         if (query.isNullOrBlank()) return

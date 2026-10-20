@@ -1,6 +1,7 @@
 package eu.kanade.presentation.browse
 
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
@@ -15,8 +16,13 @@ import eu.kanade.tachiyomi.ui.browse.source.globalsearch.SearchItemResult
 import eu.kanade.tachiyomi.ui.browse.source.globalsearch.SearchViewModel
 import eu.kanade.tachiyomi.ui.browse.source.globalsearch.SourceFilter
 import eu.kanade.tachiyomi.util.system.LocaleHelper
+import mihon.icons.materialsymbols.MaterialSymbols
+import mihon.icons.materialsymbols.rounded.DoneAll
 import tachiyomi.domain.manga.model.Manga
+import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.material.Scaffold
+import tachiyomi.presentation.core.screens.EmptyScreen
+import tachiyomi.presentation.core.screens.EmptyScreenAction
 
 @Composable
 fun GlobalSearchScreen(
@@ -49,14 +55,33 @@ fun GlobalSearchScreen(
             )
         },
     ) { paddingValues ->
-        GlobalSearchContent(
-            items = state.filteredItems,
-            contentPadding = paddingValues,
-            getManga = getManga,
-            onClickSource = onClickSource,
-            onClickItem = onClickItem,
-            onLongClickItem = onLongClickItem,
-        )
+        if (state.items.isEmpty() && !state.searchQuery.isNullOrBlank()) {
+            val pinnedOnly = state.sourceFilter == SourceFilter.PinnedOnly
+            EmptyScreen(
+                stringRes = if (pinnedOnly) MR.strings.no_pinned_sources else MR.strings.source_filter_empty_screen,
+                modifier = Modifier.padding(paddingValues),
+                actions = if (pinnedOnly) {
+                    listOf(
+                        EmptyScreenAction(
+                            stringRes = MR.strings.all,
+                            icon = MaterialSymbols.Rounded.DoneAll,
+                            onClick = { onChangeSearchFilter(SourceFilter.All) },
+                        ),
+                    )
+                } else {
+                    null
+                },
+            )
+        } else {
+            GlobalSearchContent(
+                items = state.filteredItems,
+                contentPadding = paddingValues,
+                getManga = getManga,
+                onClickSource = onClickSource,
+                onClickItem = onClickItem,
+                onLongClickItem = onLongClickItem,
+            )
+        }
     }
 }
 

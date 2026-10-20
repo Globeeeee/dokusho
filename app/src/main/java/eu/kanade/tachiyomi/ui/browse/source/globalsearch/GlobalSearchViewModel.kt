@@ -25,7 +25,9 @@ class GlobalSearchViewModel(
     getManga: GetManga,
     preferences: SourcePreferences,
 ) : SearchViewModel(
-    initialState = State(searchQuery = initialQuery),
+    // All installed sources. Pinned-only searches nothing until the user pins a source,
+    // which reads as a broken search.
+    initialState = State(searchQuery = initialQuery, sourceFilter = SourceFilter.All),
     sourcePreferences = sourcePreferences,
     sourceManager = sourceManager,
     extensionManager = extensionManager,
