@@ -74,6 +74,13 @@ object Notifications {
     const val ID_SUPERTONIC_DOWNLOAD_DONE = -803
 
     /**
+     * Notification channel and ids used by the novel export (EPUB, PDF).
+     */
+    const val CHANNEL_EXPORT = "export_channel"
+    const val ID_EXPORT_PROGRESS = -901
+    const val ID_EXPORT_COMPLETE = -902
+
+    /**
      * Notification channel and ids used for extension updates.
      */
     private const val GROUP_APK_UPDATES = "group_apk_updates"
@@ -167,6 +174,10 @@ object Notifications {
                 },
                 buildNotificationChannel(CHANNEL_TTS, IMPORTANCE_LOW) {
                     setName(context.stringResource(MR.strings.channel_tts))
+                    setShowBadge(false)
+                },
+                buildNotificationChannel(CHANNEL_EXPORT, IMPORTANCE_LOW) {
+                    setName(context.stringResource(MR.strings.channel_export))
                     setShowBadge(false)
                 },
                 buildNotificationChannel(CHANNEL_EXTENSIONS_UPDATE, IMPORTANCE_DEFAULT) {

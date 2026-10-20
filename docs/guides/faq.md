@@ -52,8 +52,11 @@ Not for now; trackers are off. Use [backups](backups.md) to keep your library an
 
 ## Can I export a novel to EPUB or PDF?
 
-Not yet. It is planned. Today **More** → **Settings** → **Data and storage** → **Export** →
-**Library List** saves the titles, authors and artists in your library as a CSV file.
+Yes. On the novel's page tap the three-dot menu, then **Export**. For several novels at once use
+**More** → **Settings** → **Data and storage** → **Novel export** → **Export novels**. Files go to
+`exports/<Title>/` in your storage location. See the [export guide](export.md).
+**Export** → **Library List** in the same screen still saves your library's titles, authors and
+artists as a CSV file.
 
 ## Listen stops when the screen turns off
 
