@@ -119,7 +119,7 @@ Design detail for each row: `.claude/rules/novel.md`.
 - [x] Images in the chapter saved next to the text (`image_001.jpg` ...) and the HTML pointed at them, so chapters read fully offline; an image that fails keeps its web address
 - [x] Download index recognises the folders (downloaded badge) with no change; the reader opens downloaded chapters from disk and resolves local images
 - [x] Delete-after-read works on the folder; download-ahead also counts a novel chapter read from disk
-- [ ] Done when: downloaded chapters open in airplane mode and show the downloaded badge. Needs Qasim's device test of 0.1.5.
+- [x] Done when: downloaded chapters open in airplane mode and show the downloaded badge. Verified by Qasim on a Pixel 9 Pro XL with v0.1.5 (2026-10-20).
 
 ### 4. First extensions (3 days, then ongoing)
 Detail and site list in `dokusho-extensions-source/docs/PLAN.md`.
