@@ -110,6 +110,7 @@ class ChapterLoader(
             source is NovelSource -> NovelPageLoader(
                 chapter,
                 source,
+                chapterCache,
                 lockedMessage = context.stringResource(MR.strings.novel_chapter_locked),
                 emptyMessage = context.stringResource(MR.strings.novel_chapter_empty),
             )

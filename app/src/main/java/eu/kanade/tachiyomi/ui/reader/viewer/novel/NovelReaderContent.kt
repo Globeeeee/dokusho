@@ -54,6 +54,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextMeasurer
@@ -66,9 +67,11 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
 import eu.kanade.tachiyomi.ui.reader.loader.NovelPage
 import eu.kanade.tachiyomi.ui.reader.model.ViewerChapters
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
+import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences.NovelFont
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences.NovelReadingMode
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences.NovelTheme
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -119,16 +122,22 @@ internal fun NovelReaderContent(
     val margin by preferences.novelHorizontalMargin.collectAsState()
     val theme by preferences.novelTheme.collectAsState()
     val mode by preferences.novelReadingMode.collectAsState()
+    val font by preferences.novelFont.collectAsState()
     val readerTheme by preferences.readerTheme.collectAsState()
     val showPageNumber by preferences.showPageNumber.collectAsState()
     var showSettings by rememberSaveable { mutableStateOf(false) }
 
     val colors = theme.resolve(readerTheme, isSystemInDarkTheme()).colors()
-    val styles = remember(fontSize, lineHeight, colors) {
+    val styles = remember(fontSize, lineHeight, colors, font) {
         val body = TextStyle(
             fontSize = fontSize.sp,
             lineHeight = (fontSize * lineHeight).sp,
-            fontFamily = FontFamily.Serif,
+            fontFamily = when (font) {
+                NovelFont.SERIF -> FontFamily.Serif
+                NovelFont.SANS -> FontFamily.SansSerif
+                NovelFont.MONO -> FontFamily.Monospace
+                NovelFont.SYSTEM -> FontFamily.Default
+            },
             color = colors.text,
         )
         NovelStyles(
@@ -419,6 +428,14 @@ private fun BlockText(block: NovelBlock, styles: NovelStyles, colors: NovelColor
         is NovelBlock.Heading -> Text(block.text, style = styles.heading)
         is NovelBlock.Quote -> Text(block.text, style = styles.quote)
         is NovelBlock.Paragraph -> Text(block.text, style = styles.body)
+        is NovelBlock.Image -> AsyncImage(
+            model = block.url,
+            contentDescription = null,
+            contentScale = ContentScale.FillWidth,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+        )
     }
 }
 
@@ -429,6 +446,12 @@ private fun SliceText(slice: PageSlice, styles: NovelStyles, colors: NovelColors
         SliceKind.Heading -> Text(slice.text, style = styles.heading)
         SliceKind.Quote -> Text(slice.text, style = styles.quote)
         SliceKind.Body -> Text(slice.text, style = styles.body)
+        SliceKind.Image -> AsyncImage(
+            model = slice.url,
+            contentDescription = null,
+            contentScale = ContentScale.Fit,
+            modifier = Modifier.fillMaxSize(),
+        )
     }
 }
 
@@ -461,9 +484,14 @@ private fun ChapterEnd(
 
 // Pagination
 
-private enum class SliceKind { Body, Heading, Quote, Divider }
+private enum class SliceKind { Body, Heading, Quote, Divider, Image }
 
-private data class PageSlice(val block: Int, val kind: SliceKind, val text: AnnotatedString)
+private data class PageSlice(
+    val block: Int,
+    val kind: SliceKind,
+    val text: AnnotatedString,
+    val url: String? = null,
+)
 
 private data class TextPage(val slices: List<PageSlice>) {
     val firstBlock get() = slices.first().block
@@ -493,6 +521,12 @@ private fun paginate(
     }
 
     blocks.forEachIndexed { index, block ->
+        if (block is NovelBlock.Image) {
+            newPage()
+            current += PageSlice(index, SliceKind.Image, AnnotatedString(""), block.url)
+            newPage()
+            return@forEachIndexed
+        }
         if (block is NovelBlock.Divider) {
             val dividerHeight = spacingPx * 2
             if (used + dividerHeight > heightPx) newPage()
@@ -563,6 +597,7 @@ internal fun ColumnScope.NovelSettingsPage(preferences: ReaderPreferences) {
     val margin by preferences.novelHorizontalMargin.collectAsState()
     val theme by preferences.novelTheme.collectAsState()
     val mode by preferences.novelReadingMode.collectAsState()
+    val font by preferences.novelFont.collectAsState()
 
     Column(
         Modifier.padding(horizontal = 16.dp),
@@ -602,6 +637,18 @@ internal fun ColumnScope.NovelSettingsPage(preferences: ReaderPreferences) {
             onValueChange = { preferences.novelHorizontalMargin.set(it.roundToInt()) },
             valueRange = 8f..48f,
             steps = 9,
+        )
+
+        Label(stringResource(MR.strings.novel_font))
+        ChipRow(
+            options = listOf(
+                NovelFont.SERIF to stringResource(MR.strings.novel_font_serif),
+                NovelFont.SANS to stringResource(MR.strings.novel_font_sans),
+                NovelFont.MONO to stringResource(MR.strings.novel_font_mono),
+                NovelFont.SYSTEM to stringResource(MR.strings.novel_font_system),
+            ),
+            selected = font,
+            onSelect = { preferences.novelFont.set(it) },
         )
 
         Label(stringResource(MR.strings.novel_theme))

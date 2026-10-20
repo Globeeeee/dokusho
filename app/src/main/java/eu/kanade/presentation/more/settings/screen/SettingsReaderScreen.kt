@@ -103,6 +103,16 @@ object SettingsReaderScreen : SearchableSettings {
                     ),
                     title = stringResource(MR.strings.novel_theme),
                 ),
+                Preference.PreferenceItem.ListPreference(
+                    preference = readerPreferences.novelFont,
+                    entries = mapOf(
+                        ReaderPreferences.NovelFont.SERIF to stringResource(MR.strings.novel_font_serif),
+                        ReaderPreferences.NovelFont.SANS to stringResource(MR.strings.novel_font_sans),
+                        ReaderPreferences.NovelFont.MONO to stringResource(MR.strings.novel_font_mono),
+                        ReaderPreferences.NovelFont.SYSTEM to stringResource(MR.strings.novel_font_system),
+                    ),
+                    title = stringResource(MR.strings.novel_font),
+                ),
                 Preference.PreferenceItem.SliderPreference(
                     preference = readerPreferences.novelFontSize,
                     valueRange = 12..32,

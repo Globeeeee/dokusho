@@ -302,6 +302,10 @@ class ReaderPreferences(
 
     enum class NovelTheme { AUTO, PAPER, SEPIA, DARK, BLACK }
 
+    val novelFont: Preference<NovelFont> = preferenceStore.getEnum("pref_novel_font", NovelFont.SERIF)
+
+    enum class NovelFont { SERIF, SANS, MONO, SYSTEM }
+
     val novelReadingMode: Preference<NovelReadingMode> =
         preferenceStore.getEnum("pref_novel_reading_mode", NovelReadingMode.SCROLL)
 

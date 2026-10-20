@@ -1140,6 +1140,11 @@
     <string name="novel_theme_dark">Dark</string>
     <string name="novel_theme_black">Black</string>
     <string name="novel_reading_mode">Reading mode</string>
+    <string name="novel_font">Font</string>
+    <string name="novel_font_serif">Serif</string>
+    <string name="novel_font_sans">Sans-serif</string>
+    <string name="novel_font_mono">Monospace</string>
+    <string name="novel_font_system">System default</string>
     <string name="novel_mode_scroll">Scroll</string>
     <string name="novel_mode_paged_ltr">Pages, left to right</string>
     <string name="novel_mode_paged_rtl">Pages, right to left</string>

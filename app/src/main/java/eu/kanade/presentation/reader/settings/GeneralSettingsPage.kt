@@ -6,6 +6,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderSettingsViewModel
@@ -35,6 +36,8 @@ private val flashColors = listOf(
 @Composable
 internal fun ColumnScope.GeneralPage(viewModel: ReaderSettingsViewModel) {
     val readerTheme by viewModel.preferences.readerTheme.collectAsState()
+    // Novel sources show only the options that affect text.
+    val isNovel by viewModel.isNovelFlow.collectAsState()
 
     val flashPageState by viewModel.preferences.flashOnPageChange.collectAsState()
 
@@ -64,39 +67,41 @@ internal fun ColumnScope.GeneralPage(viewModel: ReaderSettingsViewModel) {
 
     val verticalNavigatorModes by viewModel.preferences.verticalNavigator.collectAsState()
 
-    SettingsChipRow(MR.strings.pref_vertical_navigator) {
-        ReadingMode.entries.filter { it != ReadingMode.DEFAULT }.forEach { mode ->
-            FilterChip(
-                selected = verticalNavigatorModes.contains(mode),
-                onClick = {
-                    val newModes = if (verticalNavigatorModes.contains(mode)) {
-                        verticalNavigatorModes - mode
-                    } else {
-                        verticalNavigatorModes + mode
-                    }
-                    viewModel.preferences.verticalNavigator.set(newModes)
-                },
-                label = { Text(stringResource(mode.stringRes)) },
+    if (!isNovel) {
+        SettingsChipRow(MR.strings.pref_vertical_navigator) {
+            ReadingMode.entries.filter { it != ReadingMode.DEFAULT }.forEach { mode ->
+                FilterChip(
+                    selected = verticalNavigatorModes.contains(mode),
+                    onClick = {
+                        val newModes = if (verticalNavigatorModes.contains(mode)) {
+                            verticalNavigatorModes - mode
+                        } else {
+                            verticalNavigatorModes + mode
+                        }
+                        viewModel.preferences.verticalNavigator.set(newModes)
+                    },
+                    label = { Text(stringResource(mode.stringRes)) },
+                )
+            }
+        }
+
+        if (verticalNavigatorModes.isNotEmpty()) {
+            val verticalNavigatorHeightPref = viewModel.preferences.verticalNavigatorHeight
+            val verticalNavigatorHeight by verticalNavigatorHeightPref.collectAsState()
+
+            CheckboxItem(
+                label = stringResource(MR.strings.pref_webtoon_vertical_navigator_on_left),
+                pref = viewModel.preferences.verticalNavigatorOnLeft,
+            )
+
+            SliderItem(
+                label = stringResource(MR.strings.pref_vertical_navigator_height),
+                value = verticalNavigatorHeight,
+                valueRange = 65..100,
+                steps = 6,
+                onChange = { verticalNavigatorHeightPref.set(it) },
             )
         }
-    }
-
-    if (verticalNavigatorModes.isNotEmpty()) {
-        val verticalNavigatorHeightPref = viewModel.preferences.verticalNavigatorHeight
-        val verticalNavigatorHeight by verticalNavigatorHeightPref.collectAsState()
-
-        CheckboxItem(
-            label = stringResource(MR.strings.pref_webtoon_vertical_navigator_on_left),
-            pref = viewModel.preferences.verticalNavigatorOnLeft,
-        )
-
-        SliderItem(
-            label = stringResource(MR.strings.pref_vertical_navigator_height),
-            value = verticalNavigatorHeight,
-            valueRange = 65..100,
-            steps = 6,
-            onChange = { verticalNavigatorHeightPref.set(it) },
-        )
     }
 
     CheckboxItem(
@@ -117,51 +122,53 @@ internal fun ColumnScope.GeneralPage(viewModel: ReaderSettingsViewModel) {
         pref = viewModel.preferences.keepScreenOn,
     )
 
-    CheckboxItem(
-        label = stringResource(MR.strings.pref_read_with_long_tap),
-        pref = viewModel.preferences.readWithLongTap,
-    )
-
-    CheckboxItem(
-        label = stringResource(MR.strings.pref_always_show_chapter_transition),
-        pref = viewModel.preferences.alwaysShowChapterTransition,
-    )
-
-    CheckboxItem(
-        label = stringResource(MR.strings.pref_page_transitions),
-        pref = viewModel.preferences.pageTransitions,
-    )
-
-    CheckboxItem(
-        label = stringResource(MR.strings.pref_flash_page),
-        pref = viewModel.preferences.flashOnPageChange,
-    )
-    if (flashPageState) {
-        SliderItem(
-            value = flashMillis / ReaderPreferences.MILLI_CONVERSION,
-            valueRange = 1..15,
-            label = stringResource(MR.strings.pref_flash_duration),
-            valueString = stringResource(MR.strings.pref_flash_duration_summary, flashMillis),
-            onChange = { flashMillisPref.set(it * ReaderPreferences.MILLI_CONVERSION) },
-            pillColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+    if (!isNovel) {
+        CheckboxItem(
+            label = stringResource(MR.strings.pref_read_with_long_tap),
+            pref = viewModel.preferences.readWithLongTap,
         )
-        SliderItem(
-            value = flashInterval,
-            valueRange = 1..10,
-            label = stringResource(MR.strings.pref_flash_page_interval),
-            valueString = pluralStringResource(MR.plurals.pref_pages, flashInterval, flashInterval),
-            onChange = {
-                flashIntervalPref.set(it)
-            },
-            pillColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+
+        CheckboxItem(
+            label = stringResource(MR.strings.pref_always_show_chapter_transition),
+            pref = viewModel.preferences.alwaysShowChapterTransition,
         )
-        SettingsChipRow(MR.strings.pref_flash_with) {
-            flashColors.map { (labelRes, value) ->
-                FilterChip(
-                    selected = flashColor == value,
-                    onClick = { flashColorPref.set(value) },
-                    label = { Text(stringResource(labelRes)) },
-                )
+
+        CheckboxItem(
+            label = stringResource(MR.strings.pref_page_transitions),
+            pref = viewModel.preferences.pageTransitions,
+        )
+
+        CheckboxItem(
+            label = stringResource(MR.strings.pref_flash_page),
+            pref = viewModel.preferences.flashOnPageChange,
+        )
+        if (flashPageState) {
+            SliderItem(
+                value = flashMillis / ReaderPreferences.MILLI_CONVERSION,
+                valueRange = 1..15,
+                label = stringResource(MR.strings.pref_flash_duration),
+                valueString = stringResource(MR.strings.pref_flash_duration_summary, flashMillis),
+                onChange = { flashMillisPref.set(it * ReaderPreferences.MILLI_CONVERSION) },
+                pillColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+            )
+            SliderItem(
+                value = flashInterval,
+                valueRange = 1..10,
+                label = stringResource(MR.strings.pref_flash_page_interval),
+                valueString = pluralStringResource(MR.plurals.pref_pages, flashInterval, flashInterval),
+                onChange = {
+                    flashIntervalPref.set(it)
+                },
+                pillColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+            )
+            SettingsChipRow(MR.strings.pref_flash_with) {
+                flashColors.map { (labelRes, value) ->
+                    FilterChip(
+                        selected = flashColor == value,
+                        onClick = { flashColorPref.set(value) },
+                        label = { Text(stringResource(labelRes)) },
+                    )
+                }
             }
         }
     }

@@ -2,6 +2,7 @@ package eu.kanade.tachiyomi.ui.reader.loader
 
 import androidx.compose.ui.text.AnnotatedString
 import eu.kanade.domain.chapter.model.toSChapter
+import eu.kanade.tachiyomi.data.cache.ChapterCache
 import eu.kanade.tachiyomi.source.NovelSource
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.ui.reader.model.ReaderChapter
@@ -16,6 +17,7 @@ import eu.kanade.tachiyomi.ui.reader.viewer.novel.NovelHtml
 internal class NovelPageLoader(
     private val chapter: ReaderChapter,
     private val source: NovelSource,
+    private val chapterCache: ChapterCache,
     private val lockedMessage: String,
     private val emptyMessage: String,
 ) : PageLoader() {
@@ -23,12 +25,17 @@ internal class NovelPageLoader(
     override var isLocal: Boolean = false
 
     override suspend fun getPages(): List<ReaderPage> {
-        val content = source.getChapterContent(chapter.chapter.toSChapter())
-        val blocks = when {
-            content.locked -> listOf(NovelBlock.Paragraph(AnnotatedString(lockedMessage)))
-            else -> NovelHtml.parse(content.html).ifEmpty {
-                listOf(NovelBlock.Paragraph(AnnotatedString(emptyMessage)))
+        val dbChapter = chapter.chapter
+        val html = chapterCache.getChapterText(dbChapter) ?: run {
+            val content = source.getChapterContent(dbChapter.toSChapter())
+            if (content.locked) {
+                return listOf(NovelPage(0, NovelBlock.Paragraph(AnnotatedString(lockedMessage))))
             }
+            // Locked chapters are never cached, so unlocking one on the site shows it next time.
+            content.html.also { if (it.isNotBlank()) chapterCache.putChapterText(dbChapter, it) }
+        }
+        val blocks = NovelHtml.parse(html).ifEmpty {
+            listOf(NovelBlock.Paragraph(AnnotatedString(emptyMessage)))
         }
         return blocks.mapIndexed { index, block -> NovelPage(index, block) }
     }

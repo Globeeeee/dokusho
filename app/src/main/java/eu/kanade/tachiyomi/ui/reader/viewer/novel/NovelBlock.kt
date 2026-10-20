@@ -25,6 +25,9 @@ sealed interface NovelBlock {
     data object Divider : NovelBlock {
         override val text = AnnotatedString("")
     }
+    data class Image(val url: String) : NovelBlock {
+        override val text = AnnotatedString("")
+    }
 }
 
 object NovelHtml {
@@ -33,6 +36,9 @@ object NovelHtml {
     private val safelist = Safelist()
         .addTags("p", "div", "h1", "h2", "h3", "h4", "h5", "h6", "blockquote", "hr", "br")
         .addTags("em", "i", "strong", "b", "u")
+        .addTags("img")
+        .addAttributes("img", "src")
+        .addProtocols("img", "src", "http", "https")
 
     private val blockTags = setOf("p", "div", "h1", "h2", "h3", "h4", "h5", "h6", "blockquote", "hr")
 
@@ -52,6 +58,11 @@ object NovelHtml {
         }
         for (node in parent.childNodes()) {
             val element = node as? Element
+            if (element != null && element.tagName() == "img") {
+                flushLoose()
+                element.attr("src").takeIf { it.isNotBlank() }?.let { out += NovelBlock.Image(it) }
+                continue
+            }
             if (element == null || element.tagName() !in blockTags) {
                 loose += node
                 continue
@@ -59,21 +70,18 @@ object NovelHtml {
             flushLoose()
             when (val tag = element.tagName()) {
                 "hr" -> out += NovelBlock.Divider
-                "blockquote" -> inline(element.childNodes()).takeIf { it.isNotBlank() }?.let {
-                    out +=
-                        NovelBlock.Quote(it)
-                }
                 "div" -> collect(element, out)
-                else -> inline(element.childNodes()).takeIf { it.isNotBlank() }?.let { text ->
-                    out +=
-                        if (tag.startsWith(
-                                "h",
-                            )
-                        ) {
-                            NovelBlock.Heading(text, tag[1].digitToInt())
-                        } else {
-                            NovelBlock.Paragraph(text)
+                else -> {
+                    val text = inline(element.childNodes())
+                    if (text.isNotBlank()) {
+                        out += when {
+                            tag == "blockquote" -> NovelBlock.Quote(text)
+                            tag.startsWith("h") -> NovelBlock.Heading(text, tag[1].digitToInt())
+                            else -> NovelBlock.Paragraph(text)
                         }
+                    }
+                    // Images inside a paragraph become their own blocks after its text.
+                    element.select("img[src]").forEach { out += NovelBlock.Image(it.attr("src")) }
                 }
             }
         }

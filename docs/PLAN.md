@@ -12,7 +12,7 @@ store. Next: device test of v0.1.1, then phase 3 (offline downloads) and Scribbl
 |-------|-------|
 | 0. Build green and branded | done |
 | 1. Text source contract | done (device check of Royal Road loading in v0.1.1 pending) |
-| 2. Reader | mostly done, see open items |
+| 2. Reader | done; device test pending |
 | 3. Offline downloads | not started |
 | 4. First extensions | Royal Road and Scribble Hub done; Webnovel and WuxiaWorld next |
 | 5. Export EPUB and PDF | not started |
@@ -108,10 +108,10 @@ Design detail for each row: `.claude/rules/novel.md`.
 - [x] Keep screen on and fullscreen: Mihon's existing reader settings apply to the novel viewer unchanged
 - [x] Released in v0.1.1
 - [x] v0.1.3: theme **Auto** (default) follows General → Background color, so a black reader stays black; the reader settings dialog's Reading mode tab shows the novel options for novel sources; Settings → Reader has a Novel reader group; Show page number shows progress in scroll mode; scrolling past the end or turning past the last page opens the next chapter
-- [ ] Font family choice (only serif today)
-- [ ] Images inside chapters (dropped by the safelist today)
-- [ ] Cache chapter text in `ChapterCache` so reopening a chapter is instant and works briefly offline
-- [ ] Hide the remaining image-only options in the General tab (page transitions, double-tap zoom, flash) for novel sources; color filter, brightness, grayscale and invert apply to text and stay
+- [x] Font choice: Serif, Sans-serif, Monospace, System default (v0.1.4)
+- [x] Images inside chapters: http/https `img` kept, shown inline in scroll mode and one per page in page modes (v0.1.4)
+- [x] Chapter text cached in `ChapterCache` (separate key from page lists, locked chapters never cached), so reopening is instant (v0.1.4)
+- [x] General tab shows only text options for novel sources (background, page number, fullscreen, cutout, keep screen on); image-only options hidden (v0.1.4)
 - [ ] Done when: a 3,000-word chapter scrolls smoothly, position restores, next chapter preloads. Needs Qasim's device test of v0.1.1.
 
 ### 3. Offline downloads (3 days)

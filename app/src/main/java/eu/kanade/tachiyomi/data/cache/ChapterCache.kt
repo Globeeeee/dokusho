@@ -223,10 +223,33 @@ class ChapterCache(
         }
     }
 
+    /** Cached text of a novel chapter, or null. Kept under its own key, apart from page lists. */
+    fun getChapterText(chapter: Chapter): String? = runCatching {
+        diskCache.get(DiskUtil.hashKeyForDisk(TEXT_KEY_PREFIX + getKey(chapter)))?.use { it.getString(0) }
+    }.getOrNull()
+
+    /** Stores the sanitized text of a novel chapter so reopening it is instant. */
+    fun putChapterText(chapter: Chapter, html: String) {
+        var editor: DiskLruCache.Editor? = null
+        try {
+            editor = diskCache.edit(DiskUtil.hashKeyForDisk(TEXT_KEY_PREFIX + getKey(chapter))) ?: return
+            editor.newOutputStream(0).sink().buffer().use { it.writeUtf8(html) }
+            diskCache.flush()
+            editor.commit()
+            editor.abortUnlessCommitted()
+        } catch (_: Exception) {
+            // Caching is best effort; the chapter is fetched again next time.
+        } finally {
+            editor?.abortUnlessCommitted()
+        }
+    }
+
     private fun getKey(chapter: Chapter): String {
         return "${chapter.mangaId}${chapter.url}"
     }
 }
+
+private const val TEXT_KEY_PREFIX = "novel-text:"
 
 /** Application cache version.  */
 private const val PARAMETER_APP_VERSION = 1
