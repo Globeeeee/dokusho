@@ -1,5 +1,6 @@
 package eu.kanade.tachiyomi.ui.reader.viewer.novel
 
+import android.os.Build
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -86,6 +87,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
+import coil3.gif.AnimatedImageDecoder
 import coil3.network.NetworkHeaders
 import coil3.network.httpHeaders
 import coil3.request.ImageRequest
@@ -782,7 +784,18 @@ private fun NovelImage(
     val context = LocalPlatformContext.current
     val headers = LocalNovelImageHeaders.current
     val request = remember(url, headers) {
-        ImageRequest.Builder(context).data(url).httpHeaders(headers).build()
+        ImageRequest.Builder(context)
+            .data(url)
+            .httpHeaders(headers)
+            // The app's decoder is still-only; this one also plays GIF and animated WebP
+            .apply {
+                if (Build.VERSION.SDK_INT >=
+                    Build.VERSION_CODES.P
+                ) {
+                    decoderFactory(AnimatedImageDecoder.Factory())
+                }
+            }
+            .build()
     }
     var loaded by remember(url) { mutableStateOf(false) }
     AsyncImage(
