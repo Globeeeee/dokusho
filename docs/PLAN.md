@@ -5,7 +5,7 @@ installable extensions, downloads them for offline reading, exports EPUB and PDF
 aloud in the background.
 
 Status (2026-10-19): repos created and pushed, Mihon-only files removed, Claude Code config
-in place. Phase 0 done and released as v0.1.0. Phase 1 in progress: text contract in source-api and the loader, first extension (Royal Road) built.
+in place. Phase 0 done and released as v0.1.0. Phase 1 done (text contract, Royal Road published). Phase 2 reader shipped in v0.2.0.
 
 ## Decisions taken
 
@@ -83,6 +83,10 @@ Design detail for each row: `.claude/rules/novel.md`.
 - Done when: a hello-world extension built from the extension repo installs and lists in the app.
 
 ### 2. Reader (1 week)
+- [x] `NovelPageLoader`: chapter HTML → safelist → blocks, one reader page per paragraph (progress = paragraph index)
+- [x] `NovelViewer` (Compose): reading modes Scroll, Pages left to right, Pages right to left, Pages top to bottom; tap zones; volume keys; end-of-chapter next/previous; locked chapters shown as a message
+- [x] Text settings sheet (Aa): font size, line spacing, margins, themes paper/sepia/dark/black
+- [ ] Font family choice, keep-screen-on toggle in the sheet, images inside chapters
 - `NovelChapterLoader` → cache → `List<Block>` parsed with jsoup from sanitized HTML.
 - `NovelViewer`: LazyColumn, tap zones, volume-key scroll, progress bar, chapter transitions reuse `ChapterTransition`.
 - Settings: font family, size, line height, paragraph spacing, margins, themes (paper, sepia, dark, black), keep screen on, fullscreen.

@@ -289,6 +289,23 @@ class ReaderPreferences(
         WIDE(MR.strings.dual_page_view_wide),
     }
 
+    // Novel reader (Dokusho)
+
+    val novelFontSize: Preference<Int> = preferenceStore.getInt("pref_novel_font_size", 18)
+
+    val novelLineHeight: Preference<Float> = preferenceStore.getFloat("pref_novel_line_height", 1.6f)
+
+    val novelHorizontalMargin: Preference<Int> = preferenceStore.getInt("pref_novel_horizontal_margin", 20)
+
+    val novelTheme: Preference<NovelTheme> = preferenceStore.getEnum("pref_novel_theme", NovelTheme.PAPER)
+
+    enum class NovelTheme { PAPER, SEPIA, DARK, BLACK }
+
+    val novelReadingMode: Preference<NovelReadingMode> =
+        preferenceStore.getEnum("pref_novel_reading_mode", NovelReadingMode.SCROLL)
+
+    enum class NovelReadingMode { SCROLL, PAGED_LTR, PAGED_RTL, PAGED_VERTICAL }
+
     companion object {
         const val WEBTOON_PADDING_MIN = 0
         const val WEBTOON_PADDING_MAX = 25

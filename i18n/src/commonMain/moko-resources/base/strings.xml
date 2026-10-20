@@ -1120,4 +1120,27 @@
     <string name="donationCampaign.paragraph3">Regardless, Mihon will continue to be maintained by me and the volunteers, and it will stay open source.</string>
     <string name="donationCampaign.contactPlatform">Discord</string>
     <string name="donationCampaign.dismiss">Dismiss</string>
+
+    <!-- Novel reader -->
+    <string name="novel_chapter_locked">This chapter is locked on the site. Unlock it there with your account, then open it again.</string>
+    <string name="novel_chapter_empty">This chapter has no text.</string>
+    <string name="novel_next_chapter">Next chapter</string>
+    <string name="novel_previous_chapter">Previous chapter</string>
+    <string name="novel_no_next_chapter">You are up to date</string>
+    <string name="novel_loading_chapter">Loading chapter…</string>
+    <string name="novel_text_settings">Text settings</string>
+    <string name="novel_font_size">Font size</string>
+    <string name="novel_line_spacing">Line spacing</string>
+    <string name="novel_margins">Margins</string>
+    <string name="novel_theme">Theme</string>
+    <string name="novel_theme_paper">Paper</string>
+    <string name="novel_theme_sepia">Sepia</string>
+    <string name="novel_theme_dark">Dark</string>
+    <string name="novel_theme_black">Black</string>
+    <string name="novel_reading_mode">Reading mode</string>
+    <string name="novel_mode_scroll">Scroll</string>
+    <string name="novel_mode_paged_ltr">Pages, left to right</string>
+    <string name="novel_mode_paged_rtl">Pages, right to left</string>
+    <string name="novel_mode_paged_vertical">Pages, top to bottom</string>
+    <string name="novel_end_of_chapter">End of chapter</string>
 </resources>

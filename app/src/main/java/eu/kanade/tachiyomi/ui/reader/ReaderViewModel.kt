@@ -34,6 +34,7 @@ import eu.kanade.tachiyomi.data.download.model.Download
 import eu.kanade.tachiyomi.data.saver.Image
 import eu.kanade.tachiyomi.data.saver.ImageSaver
 import eu.kanade.tachiyomi.data.saver.Location
+import eu.kanade.tachiyomi.source.NovelSource
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.online.HttpSource
@@ -782,6 +783,9 @@ class ReaderViewModel(
     }
 
     fun getSource() = state.value.source as? HttpSource
+
+    /** True when chapters are text from a NovelSource and the novel viewer should be used. */
+    fun isNovelSource(): Boolean = state.value.source is NovelSource
 
     fun getChapterUrl(): String? {
         val sChapter = getCurrentChapter()?.chapter?.toSChapter() ?: return null

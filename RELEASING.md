@@ -176,6 +176,10 @@ chmod 600 $S/dokusho-app.jks $S/dokusho-app.properties
 unset PASS
 ```
 
+Keys are **PKCS12**, which has one password for the store and the key: `KEY_PASSWORD` must equal
+`KEY_STORE_PASSWORD`. A different key password is silently ignored when the key is made and then
+breaks signing with "Failed to read key".
+
 What the options mean: `-alias` is the key's name inside the file, `RSA 4096` is the type and
 strength, `-validity 10000` means it is valid for about 27 years. Then set the secrets as
 shown above.
