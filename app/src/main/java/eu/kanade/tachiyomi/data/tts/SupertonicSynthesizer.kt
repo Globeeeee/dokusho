@@ -296,7 +296,6 @@ private val REPLACEMENTS = mapOf(
     '←' to ' ',
 )
 
-/** One sentence per clip, so the highlight can sit on exactly the sentence being spoken. */
 /**
  * Splits a paragraph into the clips Supertonic voices, in order. Each clip is an exact slice of [text], so
  * playback can find it again for highlighting. Sentences end at `.`, `!` or `?` followed by space, never at
