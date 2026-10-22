@@ -34,6 +34,9 @@ object SettingsDownloadScreen : SearchableSettings {
         val allCategories by getCategories.subscribe().collectAsState(initial = emptyList())
 
         val downloadPreferences = remember { context.appGraph.downloadPreferences }
+        // Novel chapters download as one chapter.html, so the image options below do nothing; hidden, not
+        // removed, to keep upstream merges clean.
+        val imageOptions = false
         return listOf(
             Preference.PreferenceItem.SwitchPreference(
                 preference = downloadPreferences.downloadOnlyOverWifi,
@@ -42,11 +45,13 @@ object SettingsDownloadScreen : SearchableSettings {
             Preference.PreferenceItem.SwitchPreference(
                 preference = downloadPreferences.saveChaptersAsCBZ,
                 title = stringResource(MR.strings.save_chapter_as_cbz),
+                visible = imageOptions,
             ),
             Preference.PreferenceItem.SwitchPreference(
                 preference = downloadPreferences.splitTallImages,
                 title = stringResource(MR.strings.split_tall_images),
                 subtitle = stringResource(MR.strings.split_tall_images_summary),
+                visible = imageOptions,
             ),
             Preference.PreferenceItem.SliderPreference(
                 preference = downloadPreferences.parallelSourceLimit,
@@ -58,6 +63,7 @@ object SettingsDownloadScreen : SearchableSettings {
                 valueRange = 1..15,
                 title = stringResource(MR.strings.pref_download_concurrent_pages),
                 subtitle = stringResource(MR.strings.pref_download_concurrent_pages_summary),
+                visible = imageOptions,
             ),
             getDeleteChaptersGroup(
                 downloadPreferences = downloadPreferences,

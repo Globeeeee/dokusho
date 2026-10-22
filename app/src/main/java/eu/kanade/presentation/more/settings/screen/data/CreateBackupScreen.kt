@@ -33,6 +33,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import mihon.app.di.appGraph
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.LabeledCheckbox
 import tachiyomi.presentation.core.components.LazyColumnWithAction
@@ -99,7 +100,10 @@ class CreateBackupScreen : Screen() {
 
                 item {
                     SectionCard(MR.strings.label_library) {
-                        Options(BackupOptions.libraryOptions, state, viewModel)
+                        // Trackers are off for now, so there is never any tracking to back up.
+                        val trackersOn = context.appGraph.trackerManager.trackers.isNotEmpty()
+                        val options = BackupOptions.libraryOptions.filter { trackersOn || it.label != MR.strings.track }
+                        Options(options, state, viewModel)
                     }
                 }
 

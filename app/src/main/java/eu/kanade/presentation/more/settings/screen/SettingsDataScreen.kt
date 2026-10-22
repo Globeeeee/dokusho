@@ -377,7 +377,7 @@ object SettingsDataScreen : SearchableSettings {
                 options = exportOptions,
                 onConfirm = { options ->
                     exportOptions = options
-                    saveFileLauncher.launch("mihon_library.csv")
+                    saveFileLauncher.launch("dokusho_library.csv")
                 },
                 onDismissRequest = { showDialog = false },
             )
