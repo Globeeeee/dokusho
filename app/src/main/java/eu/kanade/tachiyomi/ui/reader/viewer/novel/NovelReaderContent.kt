@@ -1,5 +1,6 @@
 package eu.kanade.tachiyomi.ui.reader.viewer.novel
 
+import android.graphics.PointF
 import android.os.Build
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -74,10 +75,14 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextMeasurer
@@ -98,6 +103,7 @@ import coil3.network.NetworkHeaders
 import coil3.network.httpHeaders
 import coil3.request.ImageRequest
 import dev.icerock.moko.resources.StringResource
+import eu.kanade.presentation.reader.settings.TapZonesItems
 import eu.kanade.tachiyomi.data.tts.TtsPlaybackService
 import eu.kanade.tachiyomi.data.tts.TtsState
 import eu.kanade.tachiyomi.data.tts.TtsStatus
@@ -109,6 +115,12 @@ import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences.NovelFont
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences.NovelReadingMode
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences.NovelTheme
+import eu.kanade.tachiyomi.ui.reader.viewer.ViewerNavigation
+import eu.kanade.tachiyomi.ui.reader.viewer.navigation.DisabledNavigation
+import eu.kanade.tachiyomi.ui.reader.viewer.navigation.EdgeNavigation
+import eu.kanade.tachiyomi.ui.reader.viewer.navigation.KindlishNavigation
+import eu.kanade.tachiyomi.ui.reader.viewer.navigation.LNavigation
+import eu.kanade.tachiyomi.ui.reader.viewer.navigation.RightAndLeftNavigation
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -189,6 +201,7 @@ internal fun NovelReaderContent(
     val readerTheme by preferences.readerTheme.collectAsState()
     val showPageNumber by preferences.showPageNumber.collectAsState()
     var showTtsSettings by rememberSaveable { mutableStateOf(false) }
+    val navigation = rememberNovelNavigation(preferences, mode)
 
     val themeColors = theme.resolve(readerTheme, isSystemInDarkTheme()).colors()
     val colors = if (customColors) {
@@ -258,6 +271,7 @@ internal fun NovelReaderContent(
                 chapters, styles, colors, margin, showPageNumber, jumps, commands, actions, tts,
                 following = followTts,
                 onFollowChange = { followTts = it },
+                navigation = navigation,
             )
         } else {
             // Key on the chapter so the pager starts fresh at the requested paragraph.
@@ -270,6 +284,8 @@ internal fun NovelReaderContent(
                     pageTurn = pageTurn,
                     following = followTts,
                     onFollowChange = { followTts = it },
+                    onListenFrom = { block -> actions.onListenFrom(chapter, block) },
+                    navigation = navigation,
                 )
             }
         }
@@ -341,6 +357,7 @@ private fun ContinuousScrollReader(
     tts: TtsState?,
     following: Boolean,
     onFollowChange: (Boolean) -> Unit,
+    navigation: ViewerNavigation,
 ) {
     // Rebuilt right away for a new chapter set, so effects below never see the previous window,
     // then again whenever a neighbouring chapter finishes loading.
@@ -468,6 +485,7 @@ private fun ContinuousScrollReader(
         if (abs(delta) > CENTRE_TOLERANCE_PX) listState.animateScrollBy(delta.toFloat())
     }
 
+    val haptic = LocalHapticFeedback.current
     Box(Modifier.fillMaxSize()) {
         LazyColumn(
             state = listState,
@@ -476,11 +494,20 @@ private fun ContinuousScrollReader(
             modifier = Modifier
                 .fillMaxSize()
                 .tapZones(
-                    vertical = false,
+                    navigation = navigation,
                     reversed = false,
                     actions = actions,
                     onPrevious = { commands.tryEmit(NovelCommand.Previous) },
                     onNext = { commands.tryEmit(NovelCommand.Next) },
+                    onLongPress = longPress@{ offset ->
+                        // Item offsets count from the viewport start, which sits above the top content padding.
+                        val y = offset.y.toInt() + listState.layoutInfo.viewportStartOffset
+                        val hit = listState.layoutInfo.visibleItemsInfo
+                            .firstOrNull { y >= it.offset && y < it.offset + it.size }
+                        val item = hit?.let { currentItems.getOrNull(it.index) } as? BlockItem ?: return@longPress
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        actions.onListenFrom(item.chapter, item.index)
+                    },
                 ),
         ) {
             items(scrollItems, key = { it.key }) { item ->
@@ -555,7 +582,11 @@ private fun PagedReader(
     pageTurn: Boolean,
     following: Boolean,
     onFollowChange: (Boolean) -> Unit,
+    /** Long press on a paragraph: read aloud from it. */
+    onListenFrom: (Int) -> Unit,
+    navigation: ViewerNavigation,
 ) {
+    val haptic = LocalHapticFeedback.current
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val density = LocalDensity.current
         val measurer = rememberTextMeasurer()
@@ -614,15 +645,38 @@ private fun PagedReader(
         val reversed = mode == NovelReadingMode.PAGED_RTL
         val vertical = mode == NovelReadingMode.PAGED_VERTICAL
         val pageContent: @Composable (Int) -> Unit = { index ->
+            // Where each paragraph sits on this page, to find the one under a long press.
+            val sliceBounds = remember(index, pages) { mutableMapOf<Int, LayoutCoordinates>() }
+            var pageBounds by remember { mutableStateOf<LayoutCoordinates?>(null) }
+            // The gesture detector outlives recompositions; it must still see the current pagination.
+            val listenAt by rememberUpdatedState<(Offset) -> Unit> { offset ->
+                val page = pages.getOrNull(index)
+                val parent = pageBounds?.takeIf { it.isAttached }
+                val block = if (page == null || parent == null) {
+                    null
+                } else {
+                    page.slices.firstOrNull { slice ->
+                        val coords = sliceBounds[slice.block]?.takeIf { it.isAttached } ?: return@firstOrNull false
+                        val top = parent.localPositionOf(coords, Offset.Zero).y
+                        offset.y >= top && offset.y <= top + coords.size.height
+                    }?.block
+                }
+                if (block != null) {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onListenFrom(block)
+                }
+            }
             Column(
                 Modifier
                     .fillMaxSize()
+                    .onGloballyPositioned { pageBounds = it }
                     .tapZones(
-                        vertical = vertical,
+                        navigation = navigation,
                         reversed = reversed,
                         actions = actions,
                         onPrevious = { commands.tryEmit(NovelCommand.Previous) },
                         onNext = { commands.tryEmit(NovelCommand.Next) },
+                        onLongPress = { listenAt(it) },
                     )
                     .padding(horizontal = margin.dp),
             ) {
@@ -636,16 +690,18 @@ private fun PagedReader(
                     } else {
                         Column(verticalArrangement = Arrangement.spacedBy(styles.spacing.dp)) {
                             page.slices.forEach { slice ->
-                                SliceText(
-                                    slice = slice,
-                                    styles = styles,
-                                    colors = colors,
-                                    highlighted = tts != null && tts.blockIndex == slice.block,
-                                    spokenStart = tts?.spokenStart ?: -1,
-                                    spokenEnd = tts?.spokenEnd ?: -1,
-                                    wordStart = tts?.wordStart ?: -1,
-                                    wordEnd = tts?.wordEnd ?: -1,
-                                )
+                                Box(Modifier.onGloballyPositioned { sliceBounds[slice.block] = it }) {
+                                    SliceText(
+                                        slice = slice,
+                                        styles = styles,
+                                        colors = colors,
+                                        highlighted = tts != null && tts.blockIndex == slice.block,
+                                        spokenStart = tts?.spokenStart ?: -1,
+                                        spokenEnd = tts?.spokenEnd ?: -1,
+                                        wordStart = tts?.wordStart ?: -1,
+                                        wordEnd = tts?.wordEnd ?: -1,
+                                    )
+                                }
                             }
                         }
                     }
@@ -744,21 +800,50 @@ private suspend fun PagerState.turn(forward: Boolean) {
     if (target != currentPage) animateScrollToPage(target)
 }
 
-/** Left or top third goes back, right or bottom third goes forward, the middle toggles the menu. */
+/**
+ * The reader's **Tap zones** and **Invert tap zones** settings, through the same [ViewerNavigation] layouts
+ * as the image reader. Left and right turn back and forward, mirrored for right-to-left pages.
+ * A long press anywhere goes to [onLongPress].
+ */
 private fun Modifier.tapZones(
-    vertical: Boolean,
+    navigation: ViewerNavigation,
     reversed: Boolean,
     actions: NovelReaderActions,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
-): Modifier = pointerInput(vertical, reversed) {
-    detectTapGestures { offset ->
-        val fraction = if (vertical) offset.y / size.height else offset.x / size.width
-        when {
-            fraction < 1f / 3 -> if (reversed) onNext() else onPrevious()
-            fraction > 2f / 3 -> if (reversed) onPrevious() else onNext()
-            else -> actions.onToggleMenu()
+    onLongPress: (Offset) -> Unit,
+): Modifier = pointerInput(navigation, reversed) {
+    detectTapGestures(onLongPress = onLongPress) { offset ->
+        val position = PointF(offset.x / size.width, offset.y / size.height)
+        when (navigation.getAction(position)) {
+            ViewerNavigation.NavigationRegion.MENU -> actions.onToggleMenu()
+            ViewerNavigation.NavigationRegion.NEXT -> onNext()
+            ViewerNavigation.NavigationRegion.PREV -> onPrevious()
+            ViewerNavigation.NavigationRegion.RIGHT -> if (reversed) onPrevious() else onNext()
+            ViewerNavigation.NavigationRegion.LEFT -> if (reversed) onNext() else onPrevious()
         }
+    }
+}
+
+/** Pages use the pager's tap zone settings and scroll uses the webtoon ones, with their defaults. */
+@Composable
+private fun rememberNovelNavigation(preferences: ReaderPreferences, mode: NovelReadingMode): ViewerNavigation {
+    val pagerMode by preferences.navigationModePager.collectAsState()
+    val pagerInvert by preferences.pagerNavInverted.collectAsState()
+    val scrollMode by preferences.navigationModeWebtoon.collectAsState()
+    val scrollInvert by preferences.webtoonNavInverted.collectAsState()
+    val scroll = mode == NovelReadingMode.SCROLL
+    val selected = if (scroll) scrollMode else pagerMode
+    val invert = if (scroll) scrollInvert else pagerInvert
+    return remember(mode, selected, invert) {
+        when (selected) {
+            1 -> LNavigation()
+            2 -> KindlishNavigation()
+            3 -> EdgeNavigation()
+            4 -> RightAndLeftNavigation()
+            5 -> DisabledNavigation()
+            else -> if (scroll || mode == NovelReadingMode.PAGED_VERTICAL) LNavigation() else RightAndLeftNavigation()
+        }.apply { invertMode = invert }
     }
 }
 
@@ -1249,6 +1334,27 @@ internal fun ColumnScope.NovelSettingsPage(preferences: ReaderPreferences) {
                 label = { Text(stringResource(value.labelRes)) },
             )
         }
+    }
+
+    // Pages share the image pager's tap zones, scroll the webtoon ones, as the reader applies them.
+    if (mode == NovelReadingMode.SCROLL) {
+        val navigationMode by preferences.navigationModeWebtoon.collectAsState()
+        val inverted by preferences.webtoonNavInverted.collectAsState()
+        TapZonesItems(
+            selected = navigationMode,
+            onSelect = preferences.navigationModeWebtoon::set,
+            invertMode = inverted,
+            onSelectInvertMode = preferences.webtoonNavInverted::set,
+        )
+    } else {
+        val navigationMode by preferences.navigationModePager.collectAsState()
+        val inverted by preferences.pagerNavInverted.collectAsState()
+        TapZonesItems(
+            selected = navigationMode,
+            onSelect = preferences.navigationModePager::set,
+            invertMode = inverted,
+            onSelectInvertMode = preferences.pagerNavInverted::set,
+        )
     }
 
     HeadingItem(MR.strings.tts_settings)

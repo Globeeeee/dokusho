@@ -264,7 +264,7 @@ private fun ColumnScope.WebtoonViewerSettings(viewModel: ReaderSettingsViewModel
 }
 
 @Composable
-private fun ColumnScope.TapZonesItems(
+internal fun ColumnScope.TapZonesItems(
     selected: Int,
     onSelect: (Int) -> Unit,
     invertMode: ReaderPreferences.TappingInvertMode,

@@ -66,6 +66,8 @@ class NovelViewer(val activity: ReaderActivity) : Viewer {
         override fun onNextChapter() = openChapter(chapters.value?.nextChapter, atEnd = false)
 
         override fun onPreviousChapter() = openChapter(chapters.value?.prevChapter, atEnd = true)
+
+        override fun onListenFrom(chapter: ReaderChapter, index: Int) = activity.listenFrom(chapter, index)
     }
 
     private val view = ComposeView(activity).apply {
@@ -165,4 +167,7 @@ internal interface NovelReaderActions {
     fun onPreloadPrevious()
     fun onNextChapter()
     fun onPreviousChapter()
+
+    /** A paragraph was long-pressed: read aloud from it, or move an open read-aloud session there. */
+    fun onListenFrom(chapter: ReaderChapter, index: Int)
 }

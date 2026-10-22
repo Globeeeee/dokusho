@@ -34,11 +34,13 @@ import eu.kanade.tachiyomi.data.download.model.Download
 import eu.kanade.tachiyomi.data.saver.Image
 import eu.kanade.tachiyomi.data.saver.ImageSaver
 import eu.kanade.tachiyomi.data.saver.Location
+import eu.kanade.tachiyomi.data.tts.SupertonicLanguages
 import eu.kanade.tachiyomi.data.tts.SupertonicModel
 import eu.kanade.tachiyomi.data.tts.SupertonicRuntime
 import eu.kanade.tachiyomi.data.tts.TtsEngines
 import eu.kanade.tachiyomi.data.tts.TtsStatus
 import eu.kanade.tachiyomi.data.tts.speakableBlocks
+import eu.kanade.tachiyomi.data.tts.supertonicLanguage
 import eu.kanade.tachiyomi.source.NovelSource
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.model.Page
@@ -102,6 +104,7 @@ import tachiyomi.domain.library.service.LibraryPreferences
 import tachiyomi.domain.manga.interactor.GetManga
 import tachiyomi.domain.manga.model.Manga
 import tachiyomi.domain.source.service.SourceManager
+import tachiyomi.source.local.LocalSource
 import tachiyomi.source.local.image.LocalCoverManager
 import tachiyomi.source.local.isLocal
 import kotlin.time.Clock
@@ -360,8 +363,17 @@ class ReaderViewModel(
                 val manga = getManga.await(mangaId) ?: error("Requested manga of id $mangaId not found")
                 val source = sourceManager.getOrStub(manga.source)
                 incognitoMode = getIncognitoState.await(manga.source)
-                mutableState.update { it.copy(manga = manga, source = source) }
                 if (chapterId == -1L) chapterId = initialChapterId
+                // ponytail: Local source picks the viewer by the chapter opened; a folder mixing text and
+                // picture chapters reads the others in that same viewer
+                val novel = if (source is LocalSource) {
+                    getChaptersByMangaId.await(manga.id, applyScanlatorFilter = false)
+                        .firstOrNull { it.id == chapterId }
+                        ?.let { source.isTextChapter(it.toSChapter()) } == true
+                } else {
+                    source is NovelSource
+                }
+                mutableState.update { it.copy(manga = manga, source = source, novel = novel) }
 
                 loader = ChapterLoader(
                     context,
@@ -426,7 +438,7 @@ class ReaderViewModel(
      * the reader will open on. Listen then starts on audio that is already built.
      */
     private fun warmSupertonic(chapter: ReaderChapter) {
-        if (state.value.source !is NovelSource) return
+        if (!state.value.novel) return
         if (!TtsEngines.isSupertonic(readerPreferences.ttsEngine.get())) return
         if (!SupertonicModel.isReady(context)) return
         SupertonicRuntime.warm(context)
@@ -437,6 +449,11 @@ class ReaderViewModel(
         val blocks = chapter.pages.orEmpty().map { (it as? NovelPage)?.block ?: NovelBlock.Divider }
         val texts = speakableBlocks(blocks).filter { it.first >= start }.map { it.second.spoken }
         if (texts.isEmpty()) return
+        // Same language the voice will use, so the clips made here match what it asks for.
+        val language = SupertonicLanguages.fromSource(state.value.source?.lang)
+            ?: supertonicLanguage(texts.take(5).joinToString(" "))
+        if (!SupertonicLanguages.supports(language)) return
+        SupertonicRuntime.setLanguage(language)
         SupertonicRuntime.plan(
             context,
             readerPreferences.ttsVoice.get(),
@@ -822,8 +839,8 @@ class ReaderViewModel(
 
     fun getSource() = state.value.source as? HttpSource
 
-    /** True when chapters are text from a NovelSource and the novel viewer should be used. */
-    fun isNovelSource(): Boolean = state.value.source is NovelSource
+    /** True when chapters are text (a NovelSource, or a Local text file) and the novel viewer should be used. */
+    fun isNovelSource(): Boolean = state.value.novel
 
     fun getChapterUrl(): String? {
         val sChapter = getCurrentChapter()?.chapter?.toSChapter() ?: return null
@@ -1147,6 +1164,8 @@ class ReaderViewModel(
     data class State(
         val manga: Manga? = null,
         val source: Source? = null,
+        /** The chapters are text, read in the novel viewer. */
+        val novel: Boolean = false,
         val initError: Throwable? = null,
         val viewerChapters: ViewerChapters? = null,
         val bookmarked: Boolean = false,

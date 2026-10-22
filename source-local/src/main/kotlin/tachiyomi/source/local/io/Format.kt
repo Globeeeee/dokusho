@@ -9,6 +9,9 @@ sealed interface Format {
     data class Archive(val file: UniFile) : Format
     data class Epub(val file: UniFile) : Format
 
+    /** A TXT or HTML file, read in the novel reader. */
+    data class Text(val file: UniFile) : Format
+
     class UnknownFormatException : Exception()
 
     companion object {
@@ -16,6 +19,7 @@ sealed interface Format {
         fun valueOf(file: UniFile) = when {
             file.isDirectory -> Directory(file)
             file.extension.equals("epub", true) -> Epub(file)
+            LocalText.isTextFile(file) -> Text(file)
             isArchiveSupported(file) -> Archive(file)
             else -> throw UnknownFormatException()
         }

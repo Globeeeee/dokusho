@@ -627,6 +627,12 @@ class ReaderActivity : BaseActivity() {
         setMenuVisibility(false)
     }
 
+    /** Starts reading aloud at paragraph [blockIndex] of [chapter]; within the voice's own chapter it seeks. */
+    fun listenFrom(chapter: ReaderChapter, blockIndex: Int) {
+        val mangaId = viewModel.manga?.id ?: return
+        TtsPlaybackService.start(this, mangaId, chapter.chapter.id, blockIndex)
+    }
+
     /** The bottom bar's reading-mode button steps through the novel modes for novel sources. */
     private fun cycleNovelReadingMode() {
         val modes = ReaderPreferences.NovelReadingMode.entries

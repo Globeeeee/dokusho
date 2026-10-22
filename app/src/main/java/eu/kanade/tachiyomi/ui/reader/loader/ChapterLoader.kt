@@ -124,11 +124,21 @@ class ChapterLoader(
                 downloadManager,
                 downloadProvider,
             )
+            source is LocalSource && source.isTextChapter(dbChapter.toSChapter()) -> NovelPageLoader(
+                chapter,
+                source,
+                chapterCache,
+                lockedMessage = context.stringResource(MR.strings.novel_chapter_locked),
+                emptyMessage = context.stringResource(MR.strings.novel_chapter_empty),
+                // Read from the file each time, never from the chapter cache, so an edited file shows.
+                downloadedText = { source.getChapterContent(dbChapter.toSChapter()).html },
+            )
             source is LocalSource -> source.getFormat(chapter.chapter.toSChapter()).let { format ->
                 when (format) {
                     is Format.Directory -> DirectoryPageLoader(format.file)
                     is Format.Archive -> ArchivePageLoader(format.file.archiveReader(context))
                     is Format.Epub -> EpubPageLoader(format.file.epubReader(context))
+                    is Format.Text -> error("Text chapters open in the novel reader")
                 }
             }
             source is NovelSource -> NovelPageLoader(

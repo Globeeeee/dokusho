@@ -5,8 +5,10 @@ import com.hippo.unifile.UniFile
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
+import eu.kanade.tachiyomi.source.NovelSource
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.UnmeteredSource
+import eu.kanade.tachiyomi.source.model.ChapterContent
 import eu.kanade.tachiyomi.source.model.FilterList
 import eu.kanade.tachiyomi.source.model.MangasPage
 import eu.kanade.tachiyomi.source.model.Page
@@ -48,8 +50,10 @@ import tachiyomi.source.local.image.LocalCoverManager
 import tachiyomi.source.local.io.Archive
 import tachiyomi.source.local.io.Format
 import tachiyomi.source.local.io.LocalSourceFileSystem
+import tachiyomi.source.local.io.LocalText
 import tachiyomi.source.local.metadata.fillMetadata
 import uy.kohesive.injekt.injectLazy
+import java.io.File
 import java.io.InputStream
 import java.nio.charset.StandardCharsets
 import kotlin.time.Duration.Companion.days
@@ -61,7 +65,7 @@ class LocalSource(
     private val context: Context,
     private val fileSystem: LocalSourceFileSystem,
     private val coverManager: LocalCoverManager,
-) : Source, UnmeteredSource {
+) : Source, UnmeteredSource, NovelSource {
 
     private val json: Json by injectLazy()
     private val xml: XML by injectLazy()
@@ -294,8 +298,15 @@ class LocalSource(
         val chapters = fileSystem.getFilesInMangaDirectory(manga.url)
             // Only keep supported formats
             .filterNot { it.name.orEmpty().startsWith('.') }
-            .filter { it.isDirectory || Archive.isSupported(it) || it.extension.equals("epub", true) }
-            .map { chapterFile ->
+            .filter {
+                it.isDirectory || Archive.isSupported(it) || it.extension.equals("epub", true) ||
+                    LocalText.isTextFile(it)
+            }
+            .flatMap { chapterFile ->
+                // A text EPUB is a whole book: one chapter per section, read in the novel reader.
+                if (chapterFile.extension.equals("epub", true)) {
+                    epubSections(manga, chapterFile)?.let { return@flatMap it }
+                }
                 SChapter.create().apply {
                     url = "${manga.url}/${chapterFile.name}"
                     name = if (chapterFile.isDirectory) {
@@ -314,7 +325,7 @@ class LocalSource(
                             format.file.epubReader(context).use { epub ->
                                 epub.fillMetadata(manga, this)
                             }
-                        } else {
+                        } else if (format !is Format.Text) {
                             getComicInfoForChapter(chapterFile) { stream ->
                                 setChapterDetailsFromComicInfoFile(stream, this)
                             }
@@ -324,10 +335,11 @@ class LocalSource(
                     } catch (e: Exception) {
                         logcat(LogPriority.ERROR, e) { "Failed to read metadata for ${chapterFile.name}" }
                     }
-                }
+                }.let(::listOf)
             }
+            // By file, not title: an EPUB's sections keep their book order (book.epub#2 before #10).
             .sortedWith { c1, c2 ->
-                c2.name.compareToCaseInsensitiveNaturalOrder(c1.name)
+                c2.url.compareToCaseInsensitiveNaturalOrder(c1.url)
             }
 
         // Copy the cover from the first chapter found if not available
@@ -338,6 +350,49 @@ class LocalSource(
         }
 
         chapters
+    }
+
+    /** The sections of a text EPUB as chapters, or null for a picture EPUB (read as images) or a broken one. */
+    private fun epubSections(manga: SManga, file: UniFile): List<SChapter>? = try {
+        file.epubReader(context).use { epub ->
+            val sections = LocalText.sections(epub)
+            if (sections.isEmpty()) return null
+            val book = SChapter.create().also { epub.fillMetadata(manga, it) }
+            sections.mapIndexed { position, section ->
+                SChapter.create().apply {
+                    url = "${manga.url}/${file.name}${LocalText.SECTION_MARK}${section.index}"
+                    name = section.title
+                        ?: context.stringResource(MR.strings.display_mode_chapter, (position + 1).toString())
+                    date_upload = book.date_upload.takeIf { it > 0 } ?: file.lastModified()
+                    chapter_number = (position + 1).toFloat()
+                    scanlator = book.scanlator
+                }
+            }
+        }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        logcat(LogPriority.ERROR, e) { "Failed to read the sections of ${file.name}" }
+        null
+    }
+
+    // Novel text
+
+    /** True for TXT and HTML files and text EPUB sections; they open in the novel reader. */
+    fun isTextChapter(chapter: SChapter) = LocalText.isTextChapter(chapter.url)
+
+    override suspend fun getChapterContent(chapter: SChapter): ChapterContent = withContext(Dispatchers.IO) {
+        val html = when (val format = getFormat(chapter)) {
+            is Format.Text -> LocalText.fileHtml(format.file)
+            is Format.Epub -> {
+                val section = LocalText.section(chapter.url) ?: return@withContext ChapterContent("")
+                val images = File(context.cacheDir, "local_epub/" + LocalText.hash(format.file.uri.toString()))
+                format.file.epubReader(context).use { LocalText.sectionHtml(it, section, images) }
+            }
+            // Image chapters have no text; the reader shows them as pictures.
+            else -> ""
+        }
+        ChapterContent(html)
     }
 
     // Filters
@@ -351,7 +406,7 @@ class LocalSource(
             val (mangaDirName, chapterName) = chapter.url.split('/', limit = 2)
             return fileSystem.getBaseDirectory()
                 ?.findFile(mangaDirName)
-                ?.findFile(chapterName)
+                ?.findFile(LocalText.fileName(chapterName))
                 ?.let(Format.Companion::valueOf)
                 ?: throw Exception(context.stringResource(MR.strings.chapter_not_found))
         } catch (e: Format.UnknownFormatException) {
@@ -395,6 +450,7 @@ class LocalSource(
                         entry?.let { coverManager.update(manga, epub.getInputStream(it)!!) }
                     }
                 }
+                is Format.Text -> null
             }
         } catch (e: Throwable) {
             logcat(LogPriority.ERROR, e) { "Error updating cover for ${manga.title}" }
