@@ -35,13 +35,8 @@ class NewUpdateScreen(
             downloadProgress = { state.downloadProgress },
             changelogInfo = state.changelogInfo,
             onOpenInBrowser = { context.openInBrowser(releaseLink) },
-            onAcceptUpdate = {
-                when (state.stage) {
-                    NewUpdateScreenModel.Stage.Available, NewUpdateScreenModel.Stage.Failed -> viewModel.startDownload()
-                    NewUpdateScreenModel.Stage.Downloaded -> viewModel.installUpdate()
-                    else -> Unit
-                }
-            },
+            // Without REQUEST_INSTALL_PACKAGES the app can't install itself, so the browser downloads the APK
+            onAcceptUpdate = { context.openInBrowser(downloadLink) },
             onRejectUpdate = navigator::pop,
             onSkipUpdate = {
                 viewModel.skipUpdate(versionName)
