@@ -1,7 +1,6 @@
 package eu.kanade.presentation.browse
 
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -42,16 +41,13 @@ import eu.kanade.presentation.browse.components.BaseBrowseItem
 import eu.kanade.presentation.browse.components.ExtensionIcon
 import eu.kanade.presentation.browse.components.ExtensionPill
 import eu.kanade.presentation.browse.components.label
-import eu.kanade.presentation.components.WarningBanner
 import eu.kanade.presentation.more.settings.screen.browse.ExtensionStoresScreen
-import eu.kanade.presentation.util.rememberRequestPackageInstallsPermissionState
 import eu.kanade.tachiyomi.extension.model.Extension
 import eu.kanade.tachiyomi.extension.model.InstallStep
 import eu.kanade.tachiyomi.ui.browse.extension.ExtensionUiModel
 import eu.kanade.tachiyomi.ui.browse.extension.ExtensionsViewModel
 import eu.kanade.tachiyomi.util.system.LocaleHelper
 import eu.kanade.tachiyomi.util.system.copyToClipboard
-import eu.kanade.tachiyomi.util.system.launchRequestPackageInstallsPermission
 import mihon.domain.extension.model.ExtensionStore
 import mihon.icons.materialsymbols.MaterialSymbols
 import mihon.icons.materialsymbols.rounded.Close
@@ -150,24 +146,11 @@ private fun ExtensionContent(
     onOpenExtension: (Extension.Loaded) -> Unit,
     onClickUpdateAll: () -> Unit,
 ) {
-    val context = LocalContext.current
     var notLoadedState by remember { mutableStateOf<Extension.NotLoaded?>(null) }
-    val installGranted = rememberRequestPackageInstallsPermissionState(initialValue = true)
 
     FastScrollLazyColumn(
         contentPadding = contentPadding + topSmallPaddingValues,
     ) {
-        if (!installGranted && state.installer?.requiresSystemPermission == true) {
-            item(key = "extension-permissions-warning") {
-                WarningBanner(
-                    textRes = MR.strings.ext_permission_install_apps_warning,
-                    modifier = Modifier.clickable {
-                        context.launchRequestPackageInstallsPermission()
-                    },
-                )
-            }
-        }
-
         state.items.forEach { (header, items) ->
             item(
                 contentType = "header",

@@ -17,10 +17,10 @@ an APK people can download from GitHub, and how extensions get published.
 | v0.1.6 | 8 | 2026-10-21 | Text-to-speech (Android TTS and Supertonic) with word highlight and auto-scroll, chapter skip buttons fixed, real chapter dates instead of "today", faster chapter images and animated GIFs, voice picker, fewer "Failed to bypass Cloudflare" errors, Dokusho help guides | published |
 | v0.1.7 | 9 | 2026-10-21 | EPUB and PDF export (per novel and Export novels in settings), downloads no longer stuck at loading, novel cover in the TTS media player | published |
 | v0.1.8 | 10 | 2026-10-22 | Long press to listen, smoother Supertonic in 31 languages, saved spoken audio, play sample and engine status, local TXT/HTML/EPUB novels, tap zones, novel wording; fixes for the voice-change crash, earbud buttons with system voices and failing engines. Notes in `docs/releases/v0.1.8.md` | published |
-| v0.1.9 | 11 | 2026-10-22 | No install-apps permission so Play Protect stops blocking it, extensions install privately inside the app, update button opens the APK in the browser. Notes in `docs/releases/v0.1.9.md` | **latest** |
+| v0.1.9 | 12 | 2026-10-22 | No install-apps permission so Play Protect stops blocking it, extensions install privately inside the app, update button opens the APK in the browser. Notes in `docs/releases/v0.1.9.md` | **latest** |
 
-**Next release: `versionCode = 12`.** Code 2 is used up by the withdrawn v0.2.0 and can never
-be reused, so the codes skip a number. That is fine; Android only cares that each one is bigger.
+**Next release: `versionCode = 13`.** Code 2 is used up by the withdrawn v0.2.0 and code 11 by a
+v0.1.9 test build that crashed on start, so neither can be reused and the codes skip numbers. That is fine; Android only cares that each one is bigger.
 
 ## The short version
 

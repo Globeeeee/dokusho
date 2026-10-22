@@ -37,7 +37,7 @@ android {
     defaultConfig {
         applicationId = "app.dokusho"
 
-        versionCode = 11
+        versionCode = 12
         versionName = "0.1.9"
 
         buildConfigField("boolean", "TELEMETRY_INCLUDED", "${Config.includeTelemetry}")
