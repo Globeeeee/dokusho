@@ -4,17 +4,15 @@
 **Browse** → **Sources**. Each folder becomes one entry in Dokusho, each file or subfolder inside
 it a chapter.
 
-## Text EPUB and TXT are not supported yet
+## Text and pictures
 
-Local source still works the way Mihon built it, for images:
-
-- A chapter opens in the image reader, not the novel text reader. Text settings and **Listen**
-  are not available there.
-- An **EPUB** shows only the pictures inside it. A text-only EPUB opens with no pages.
-- **TXT** and **HTML** files are ignored and do not show up as chapters.
-
-Reading your own EPUB and TXT files as text is planned. Until then, Local source is useful for
-illustrated volumes, artbooks and comics. For text, add the novel from an extension instead.
+- **TXT** and **HTML** files open in the novel reader, one chapter each, with text settings and
+  **Listen**. A TXT file splits into paragraphs at blank lines (or at every line if it has none).
+- A **text EPUB** becomes one chapter per section of the book, named from each section's heading,
+  in book order. Its pictures show inline.
+- A picture EPUB (a comic), archives and image folders open in the image reader as before.
+- Keep text and picture chapters in separate series folders: the reader picks the text or image
+  view from the chapter you open.
 
 ## Where the folder is
 
@@ -43,8 +41,11 @@ local/
 │   │   ├── 001.jpg
 │   │   └── 002.jpg
 │   └── Volume 3.epub
-└── Another Series/
-    └── ...
+├── A Novel/
+│   └── A Novel.epub
+└── Another Novel/
+    ├── Chapter 1.txt
+    └── Chapter 2.txt
 ```
 
 - The series folder name is the title, unless `ComicInfo.xml` gives another one.
@@ -60,7 +61,10 @@ local/
 | `.rar`, `.cbr` | Images inside the archive |
 | `.7z`, `.cb7` | Images inside the archive |
 | `.tar`, `.cbt` | Images inside the archive |
-| `.epub` | Only the images inside, in reading order |
+| `.epub` with text | One chapter per section, in the novel reader |
+| `.epub` with only pictures | The images inside, in reading order |
+| `.txt` | One chapter, in the novel reader |
+| `.html`, `.htm`, `.xhtml` | One chapter, in the novel reader |
 
 Any other file type in a series folder is ignored.
 

@@ -4,10 +4,12 @@ Web novel reader for Android, built on Mihon. Reads novels from public sites thr
 installable extensions, downloads them for offline reading, exports EPUB and PDF, and reads
 aloud in the background.
 
-Status (2026-10-21): phases 0 to 3 done and confirmed on device. Phase 4: 27 extensions built
+Status (2026-10-22): phases 0 to 3 done and confirmed on device. Phase 4: 27 extensions built
 (AO3, SpaceBattles, Sufficient Velocity, FanFiction.net, FictionPress and Webnovel added for
-v0.1.7, device checks pending). Phase 6 TTS released in v0.1.6. Phase 5 export built for v0.1.7.
-Next: device checks, then phase 7 polish (novel local source, wording), see its list.
+v0.1.7, device checks pending). Phase 5 export built for v0.1.7. Phase 6 complete in code
+(long press to listen, sentence audio cache, engine fallback); v0.1.8 committed but not tagged.
+Phase 7: all items built except Cloudflare edge cases; not yet compiled or checked on device.
+Next: build and device checks, then decide manga support (see Later).
 
 | Phase                      | State                                                                     |
 | -------------------------- | ------------------------------------------------------------------------- |
@@ -17,8 +19,9 @@ Next: device checks, then phase 7 polish (novel local source, wording), see its 
 | 3. Offline downloads       | done, confirmed on device (v0.1.5); stuck-download fix in v0.1.7          |
 | 4. First extensions        | 27 built; AO3, forums, FanFiction.net, Webnovel new, device check pending |
 | 5. Export EPUB and PDF     | built for v0.1.7; device check pending                                    |
-| 6. Background TTS          | released in v0.1.6; screen-off and phone-call check pending               |
-| 7. Polish and release      | release pipeline and help guides done; open items below                   |
+| 6. Background TTS          | complete in code; screen-off and phone-call check pending                 |
+| 7. Polish and release      | built except Cloudflare edge cases; build and device check pending        |
+| 8. Manga next to novels    | planned, decisions open                                                   |
 
 ## Decisions taken
 
@@ -169,7 +172,78 @@ MVP = phases 0 to 4, roughly 3 weeks.
 - [x] v0.1.7: novel cover in the media player, notification and lock screen (Settings, Reader, Show novel cover)
 - [x] v0.1.8: Supertonic plays on one long-lived audio track with read-ahead (no gap per sentence), loads with basic graph optimisation and more threads, reads "..." as a pause and skips wordless clips, joins very short sentences; highlight follows the frame actually heard; scroll mode keeps the spoken sentence centred, page modes turn to its page; highlight colour choice; chapters finished by the voice stay marked read; notification sounds duck the voice instead of restarting the sentence
 - [x] v0.1.8: page turn effect for the left to right and right to left page modes
+- [x] Sentence audio cache on disk (`TtsClipCache`, 16-bit PCM in the app cache, 300 MB, least recently played dropped first): Supertonic always, system engines with **Save spoken audio** (they render to WAV and Dokusho plays it through the same `ClipTtsEngine` player)
+- [x] Engine status line (ready, no voice for the language, cloud only, failed to start), **Install voices** shortcut, **Play sample**, in the listen sheet and Settings, Reader
+- [x] A system engine that fails to start or errors mid-chapter falls back to the device default with a message; paid engines (eReader Prestigio, subscription cloud voices) hidden
+- [x] Crash fixed: changing a setting while Supertonic played released its audio track under the playback thread (`IllegalStateException` in `getPlaybackHeadPosition`, from the device crash log)
+- [x] Long press a paragraph to read aloud from it (seeks when the voice is already in that chapter), in scroll and page modes
+- [x] Fixes: earbud play and pause with system engines (Dokusho plays silence while the engine speaks, so Android routes media buttons to it); engine and pitch changes applied once the slider settles, not on every step; a system engine cancelled while starting is no longer kept as a dead engine; voice lists from third-party engines can no longer crash settings
+- [ ] Device check: Google "Speech Recognition and Synthesis" reads aloud live and with Save spoken audio; earbud play and pause with each engine
 - [ ] Done-when check on device: a full chapter with the screen off, and a phone call in the middle
+
+### 8. Manga next to novels (planned, not started; about 2 weeks)
+
+Goal: Mihon's manga, from Keiyoushi extensions, works in Dokusho as it does in Mihon, while novels
+and manga never mix in Library, Browse, Extensions, Updates, History or Migrate. Everything stays on
+the device as in Mihon: library, progress, history, categories and downloads in the local database
+and storage folder, no account, no Dokusho server.
+
+Repo for manga: `https://github.com/keiyoushi/extensions/raw/repo/index.pb` (checked 2026-10-22:
+reachable, gzipped protobuf index, about 110 KB, a format `ExtensionStoreService` already reads).
+
+Design:
+
+- **Kind**: every entry is a Novel or a Manga. A source is a novel source when it implements
+  `NovelSource` (lib 2.0 extensions, Local text chapters), otherwise manga. Stored per entry in a new
+  `manga.content_kind` column (`20.sqm`, default novel for existing rows), set on insert from the source,
+  carried in backups as a new `@ProtoNumber` field so a restore without the extension still sorts right.
+- **Extension loader**: accept both features side by side: `dokusho.extension` with lib 2.0 (novels)
+  and Mihon's `tachiyomi.extension` with lib 1.4 to 1.6 (manga), each with its own meta-data keys.
+  Signature trust and the store's `signingKey` check stay as they are; a Keiyoushi extension is
+  trusted through the Keiyoushi repo's key. This reverses the "new lib version keeps manga APKs from
+  loading" decision once approved.
+- **Repos**: Extension repos lists each repo with its kind, from the lib versions in its index.
+  The default novel repo stays; the Keiyoushi repo is added by the user, never preinstalled.
+- **One Novels | Manga switch** at the top of Library, Updates, History, Browse (Sources,
+  Extensions, Migrate), remembered per screen. Categories, filters and sort are per kind.
+  Search across sources searches only the current kind. Library update and auto-download run for
+  both kinds; their notifications name the kind.
+- **Reader**: manga opens in Mihon's image viewers (pager, webtoon) with their reading modes,
+  crop, color filters and settings; novels keep the novel viewer. Listen, Export and text settings
+  stay on novels. Manga downloads use Mihon's image path (`saveChaptersAsCBZ`, `splitTallImages`,
+  concurrent pages), so those settings come back under a Manga heading.
+- **Wording**: shared screens say novel or manga from the switch (strings with a kind variant);
+  manga-only Mihon strings come back for manga screens.
+- **Local source**: already splits by chapter: text files and text EPUBs as novels, CBZ, folders and
+  picture EPUBs as manga. With the kind column, a Local series is filed by its first chapter.
+
+Steps:
+
+- [ ] Decide the open questions below
+- [ ] `content_kind` column, migration `20.sqm`, domain model, mapper, backup field, `verifySqlDelightMigration`
+- [ ] Loader: both features and lib ranges; extension model and store entries carry the kind
+- [ ] Novels | Manga switch component; Library, Updates, History, Browse, Extensions, Migrate filtered by it
+- [ ] Reader, downloads and settings: manga paths re-enabled under a Manga heading, novel-only actions gated
+- [ ] Strings with novel and manga variants; guides: manga section, adding the Keiyoushi repo
+- [ ] Unit tests: kind from source, migration default, backup round trip with kind, loader accepts both features
+- [ ] Done when: with the Keiyoushi repo added, a manga extension installs from the Manga side, a manga
+  reads, downloads and restores from backup, and the Novels side of every screen shows no manga
+
+Open decisions (Qasim owns them):
+
+| Decision | Recommendation | Counter-argument |
+| -------- | -------------- | ---------------- |
+| How to separate | One Novels, Manga switch per screen | A bottom tab per kind is clearer at a glance, but doubles navigation and the upstream merge surface |
+| Where the kind lives | `content_kind` column per entry | Working it out from the source needs no migration, but entries from an uninstalled extension land on the wrong side |
+| Order | After phases 6 and 7 are built and checked on device | Starting now saves a round of testing, but stacks the biggest change on code never compiled |
+| Telemetry | Keep as Mihon: crash reports and analytics in GitHub builds, both switchable in Settings, none in the FOSS build | "Everything local" could mean both off by default, so nothing leaves the phone unless turned on |
+
+#### What leaves the phone today (checked 2026-10-22)
+
+Library, progress, history, categories, downloads, exports, TTS audio and backups are all local, as in
+Mihon. Network use is limited to: sources and their WebView, extension repos, the app update check
+(GitHub Releases), the one-time Supertonic model download, and Firebase crash reports and analytics in
+GitHub release builds (on by default, switchable under Settings, absent from the FOSS build).
 
 ### Later (not scheduled)
 
@@ -188,15 +262,15 @@ MVP = phases 0 to 4, roughly 3 weeks.
 
 Open items found while writing the help guides (2026-10-21):
 
-- [ ] Local source opens text: a text EPUB, TXT or HTML file opens in the novel reader (today Local source is image-only, a text EPUB shows no pages, TXT and HTML are ignored)
-- [ ] Novel reader honours **Tap zones** and **Invert tap zones** (today fixed thirds); volume keys already work
-- [ ] Hide download settings that do nothing for novels: Save as CBZ, Split tall images, Concurrent page downloads
-- [ ] Listen from a tapped paragraph (phase 6 asked for it; today Listen starts at the top of the screen)
-- [ ] Wording: backup "Library entries" and "All read entries", Smart update "Skip entries with...", migration "...current entry..." say novel; library CSV export named `dokusho_library.csv` instead of `mihon_library.csv`
-- [ ] Migration strings (`migrationConfigScreen_*`, `migrationListScreen_*`) added to base `strings.xml`
-- [ ] Backup screen hides the empty **Tracking** option while trackers are off
-- [ ] Supertonic language detection beyond English, Japanese and Korean, or fall back to the system engine
-- [ ] Remove Mihon's unused donation popup and Support us screen (unreachable, still hold Mihon links)
+- [x] Local source opens text: TXT and HTML files as one chapter each, a text EPUB as one chapter per section (images unpacked to the cache), in the novel reader with Listen and export; picture EPUBs, archives and folders stay in the image reader
+- [x] Novel reader honours **Tap zones** and **Invert tap zones** (pages use the pager setting, scroll the webtoon one), also offered in the novel Reading mode tab
+- [x] Hidden download settings that do nothing for novels: Save as CBZ, Split tall images, Concurrent page downloads
+- [x] Listen from a tapped paragraph: long press, done in phase 6
+- [x] Wording: every English "entry" or "entries" says novel (37 strings); library CSV export named `dokusho_library.csv`
+- [x] Migration strings (`migrationConfigScreen.*`, `migrationListScreen.*`) already in base `strings.xml` from Mihon (dot names, underscores in code)
+- [x] Backup screen hides the empty **Tracking** option while trackers are off
+- [x] Supertonic reads the novel in the source's language (all 31 it supports), detects the script when the source covers several, and hands a language it can't read (Chinese, Thai) to the system voice
+- [x] Removed Mihon's unused donation popup and Support us screen
 - [ ] Cloudflare: form posts on sites that reject OkHttp after the WebView passed, and checks that need a tap while the app is in the background, still fail
 
 - [x] Release workflow on `v*` tags, keystore secrets, GitHub Releases (done in phase 0; v0.1.0 and v0.1.1 published). F-Droid later.

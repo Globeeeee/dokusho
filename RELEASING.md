@@ -16,7 +16,7 @@ an APK people can download from GitHub, and how extensions get published.
 | v0.1.5 | 7 | 2026-10-20 | Cloudflare checks shown on screen, offline downloads with images, continuous scroll across chapters, custom colors, VPN setting, new empty library screen, Dokusho guides | published |
 | v0.1.6 | 8 | 2026-10-21 | Text-to-speech (Android TTS and Supertonic) with word highlight and auto-scroll, chapter skip buttons fixed, real chapter dates instead of "today", faster chapter images and animated GIFs, voice picker, fewer "Failed to bypass Cloudflare" errors, Dokusho help guides | published |
 | v0.1.7 | 9 | 2026-10-21 | EPUB and PDF export (per novel and Export novels in settings), downloads no longer stuck at loading, novel cover in the TTS media player | published |
-| v0.1.8 | 10 | 2026-10-21 | Seamless Supertonic read-ahead and natural pauses, highlight in time with the voice and centred in scroll mode, highlight colours, page turn effect, chapters marked read while listening, notifications no longer restart the sentence | **latest** |
+| v0.1.8 | 10 | 2026-10-22 | Long press to listen, smoother Supertonic in 31 languages, saved spoken audio, play sample and engine status, local TXT/HTML/EPUB novels, tap zones, novel wording; fixes for the voice-change crash, earbud buttons with system voices and failing engines. Notes in `docs/releases/v0.1.8.md` | **latest** |
 
 **Next release: `versionCode = 11`.** Code 2 is used up by the withdrawn v0.2.0 and can never
 be reused, so the codes skip a number. That is fine; Android only cares that each one is bigger.
@@ -51,10 +51,17 @@ versionName = "0.1.5"    // what people see
 `versionCode` is for Android: a phone only installs an update when this number is bigger.
 `versionName` is for humans and must match the tag without the `v`.
 
+### 1b. Write the patch notes
+
+Create `docs/releases/v0.1.2.md` (the tag name plus `.md`) with what changed, in plain words for
+readers: a **What's new** section, a **Fixes** section, and anything to know when installing.
+The release workflow puts it on the GitHub release page, and the app's update dialog shows the
+same text. Without the file the release only links to the plan.
+
 ### 2. Commit and push
 
 ```bash
-git add app/build.gradle.kts
+git add app/build.gradle.kts docs/releases/v0.1.2.md
 git commit -m "Release 0.1.2"
 git push origin main
 ```

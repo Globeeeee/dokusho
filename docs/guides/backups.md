@@ -23,9 +23,8 @@ under the setting.
 
 | Option | Contents |
 |--------|----------|
-| **Library entries** | Novels in your library, with their details |
+| **Library novels** | Novels in your library, with their details |
 | **Chapters** | Read and bookmarked chapters and reading progress |
-| **Tracking** | Tracker links; empty while trackers are off |
 | **History** | When you last read each novel |
 | **Categories** | Your categories and which novels are in them |
 | **All read entries** | Progress on novels you read but did not add to your library |

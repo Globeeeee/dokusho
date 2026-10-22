@@ -73,7 +73,8 @@ they load from the site; downloaded chapters keep their images, see [downloads](
 ## Listen (read aloud)
 
 Open the menu and tap **Listen**. Reading starts at the paragraph at the top of the screen. To
-start somewhere else, stop, move there and tap **Listen** again.
+start somewhere else, long press that paragraph: reading starts there, or jumps there if the
+voice is already reading this chapter.
 
 - The sentence being read is highlighted, with a stronger mark on the current word. Pick the
   colour in the reader menu → **General** → **Read-aloud highlight** (Auto uses your text colour).
@@ -113,10 +114,17 @@ From the gear on the listen bar, the gear menu's **Reading mode** tab, or **More
 **Settings** → **Reader** → **Read aloud settings**:
 
 - **Engine**: **System default**, each text to speech app installed on the phone (for example
-  Google Speech Services), or **Supertonic**.
+  Google Speech Services), or **Supertonic**. Engines that need a paid subscription (eReader
+  Prestigio) are not listed. A line under the engine says whether it is ready, has no voice for
+  your language (tap **Install voices**), or needs internet. If the chosen engine fails, reading
+  carries on with the system default and a message says so.
 - **Voice**: for system engines, tap the card to open the voice list, grouped by language.
   **Online** voices need internet; **HD** marks higher quality voices.
 - **Speed**: 0.5× to 3×. **Pitch**: 0.5× to 2×.
+- **Save spoken audio** (system engines): each sentence is kept on the phone, up to 300 MB, so a
+  chapter played again starts at once without the engine. Supertonic always does this.
+- **Play sample**: hear the engine, voice, speed and pitch before reading. Hidden while a
+  chapter is being read aloud, since changes are heard there.
 
 ### Supertonic
 
