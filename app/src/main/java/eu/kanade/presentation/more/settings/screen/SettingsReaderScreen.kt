@@ -1,6 +1,7 @@
 package eu.kanade.presentation.more.settings.screen
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.collectAsState
@@ -16,8 +17,12 @@ import eu.kanade.tachiyomi.data.tts.SupertonicDownloadState
 import eu.kanade.tachiyomi.data.tts.SupertonicModel
 import eu.kanade.tachiyomi.data.tts.SupertonicVoices
 import eu.kanade.tachiyomi.data.tts.TtsCatalog
+import eu.kanade.tachiyomi.data.tts.TtsEngineStatus
 import eu.kanade.tachiyomi.data.tts.TtsEngines
 import eu.kanade.tachiyomi.data.tts.TtsPlaybackService
+import eu.kanade.tachiyomi.data.tts.TtsSample
+import eu.kanade.tachiyomi.data.tts.TtsStatus
+import eu.kanade.tachiyomi.data.tts.caption
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderOrientation
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
 import eu.kanade.tachiyomi.ui.reader.setting.ReadingMode
@@ -148,6 +153,18 @@ object SettingsReaderScreen : SearchableSettings {
     private fun getTtsGroup(readerPreferences: ReaderPreferences): Preference.PreferenceGroup {
         val context = LocalContext.current
         val engine by readerPreferences.ttsEngine.collectAsState()
+        val voice by readerPreferences.ttsVoice.collectAsState()
+        val samplePlaying by TtsSample.playing.collectAsState()
+        val session by TtsStatus.state.collectAsState()
+        var engineStatus by remember { mutableStateOf<TtsEngineStatus?>(null) }
+        LaunchedEffect(engine, voice) {
+            engineStatus = if (TtsEngines.isSupertonic(engine)) {
+                null
+            } else {
+                TtsCatalog(context).status(TtsEngines.systemPackage(engine), voice)
+            }
+        }
+        DisposableEffect(Unit) { onDispose { TtsSample.stop() } }
         val systemDefault = stringResource(MR.strings.tts_system_default)
         val voiceDefault = stringResource(MR.strings.tts_voice_default)
         val supertonic = stringResource(MR.strings.tts_supertonic)
@@ -204,7 +221,8 @@ object SettingsReaderScreen : SearchableSettings {
                             SupertonicDownloadState.Failed -> stringResource(MR.strings.tts_supertonic_failed)
                             SupertonicDownloadState.Idle -> null
                         }
-                        if (detail == null) name else "$name · $detail"
+                        val status = engineStatus?.let { stringResource(it.caption()) }
+                        listOfNotNull(name, detail, status).joinToString(" · ")
                     },
                     onValueChanged = { value ->
                         if (TtsEngines.isSupertonic(value) && !SupertonicModel.isReady(context)) {
@@ -254,6 +272,30 @@ object SettingsReaderScreen : SearchableSettings {
                     onValueChanged = {
                         TtsPlaybackService.applySettings(context)
                         true
+                    },
+                ),
+                Preference.PreferenceItem.TextPreference(
+                    title = stringResource(MR.strings.tts_install_voices),
+                    visible = engineStatus == TtsEngineStatus.NO_VOICE || engineStatus == TtsEngineStatus.ONLINE_ONLY,
+                    onClick = { TtsCatalog(context).openVoiceInstall(TtsEngines.systemPackage(engine)) },
+                ),
+                Preference.PreferenceItem.SwitchPreference(
+                    preference = readerPreferences.ttsSaveAudio,
+                    title = stringResource(MR.strings.tts_save_audio),
+                    subtitle = stringResource(MR.strings.tts_save_audio_summary),
+                    visible = !TtsEngines.isSupertonic(engine),
+                    onValueChanged = {
+                        TtsPlaybackService.applySettings(context)
+                        true
+                    },
+                ),
+                Preference.PreferenceItem.TextPreference(
+                    title = stringResource(
+                        if (samplePlaying) MR.strings.tts_stop_sample else MR.strings.tts_play_sample,
+                    ),
+                    visible = session == null,
+                    onClick = {
+                        if (samplePlaying) TtsSample.stop() else TtsSample.play(context, readerPreferences)
                     },
                 ),
                 Preference.PreferenceItem.SwitchPreference(

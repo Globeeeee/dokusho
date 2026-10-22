@@ -13,6 +13,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -20,24 +21,35 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
 import eu.kanade.tachiyomi.data.tts.SupertonicDownload
 import eu.kanade.tachiyomi.data.tts.SupertonicDownloadState
 import eu.kanade.tachiyomi.data.tts.SupertonicModel
 import eu.kanade.tachiyomi.data.tts.SupertonicVoices
 import eu.kanade.tachiyomi.data.tts.TtsCatalog
+import eu.kanade.tachiyomi.data.tts.TtsEngineStatus
 import eu.kanade.tachiyomi.data.tts.TtsEngines
 import eu.kanade.tachiyomi.data.tts.TtsPlaybackService
+import eu.kanade.tachiyomi.data.tts.TtsSample
+import eu.kanade.tachiyomi.data.tts.TtsStatus
+import eu.kanade.tachiyomi.data.tts.caption
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
+import mihon.icons.materialsymbols.MaterialSymbols
+import mihon.icons.materialsymbols.rounded.Download
 import tachiyomi.i18n.MR
+import tachiyomi.presentation.core.components.CheckboxItem
 import tachiyomi.presentation.core.components.HeadingItem
+import tachiyomi.presentation.core.components.IconItem
 import tachiyomi.presentation.core.components.SettingsChipRow
 import tachiyomi.presentation.core.components.SettingsItemsPaddings
 import tachiyomi.presentation.core.components.SliderItem
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.util.collectAsState
 import kotlin.math.roundToInt
+import mihon.icons.materialsymbols.R as MaterialSymbolsR
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -68,6 +80,10 @@ internal fun TtsSettingsContent(preferences: ReaderPreferences) {
     val voice by preferences.ttsVoice.collectAsState()
     val speed by preferences.ttsSpeed.collectAsState()
     val pitch by preferences.ttsPitch.collectAsState()
+    val saveAudio by preferences.ttsSaveAudio.collectAsState()
+    val samplePlaying by TtsSample.playing.collectAsState()
+    val session by TtsStatus.state.collectAsState()
+    var status by remember { mutableStateOf<TtsEngineStatus?>(null) }
     var installed by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
     var voices by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
     var pickingVoice by remember { mutableStateOf(false) }
@@ -78,6 +94,11 @@ internal fun TtsSettingsContent(preferences: ReaderPreferences) {
         SupertonicDownload.bind(context)
         installed = TtsCatalog(context).installedEngines()
     }
+    LaunchedEffect(engine, voice) {
+        status = if (supertonic) null else TtsCatalog(context).status(TtsEngines.systemPackage(engine), voice)
+    }
+    // A sample left playing would talk over the chapter, or over the next sample after a change.
+    DisposableEffect(Unit) { onDispose { TtsSample.stop() } }
     LaunchedEffect(engine) {
         voices = if (TtsEngines.isSupertonic(engine)) {
             SupertonicVoices.all
@@ -121,6 +142,25 @@ internal fun TtsSettingsContent(preferences: ReaderPreferences) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = SettingsItemsPaddings.Horizontal),
         )
+    }
+    status?.let { engineStatus ->
+        Text(
+            stringResource(engineStatus.caption()),
+            style = MaterialTheme.typography.bodySmall,
+            color = if (engineStatus == TtsEngineStatus.READY) {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            } else {
+                MaterialTheme.colorScheme.error
+            },
+            modifier = Modifier.padding(horizontal = SettingsItemsPaddings.Horizontal),
+        )
+        if (engineStatus == TtsEngineStatus.NO_VOICE || engineStatus == TtsEngineStatus.ONLINE_ONLY) {
+            IconItem(
+                label = stringResource(MR.strings.tts_install_voices),
+                icon = MaterialSymbols.Rounded.Download,
+                onClick = { TtsCatalog(context).openVoiceInstall(TtsEngines.systemPackage(engine)) },
+            )
+        }
     }
     when (val status = download) {
         is SupertonicDownloadState.Running -> LinearProgressIndicator(
@@ -193,6 +233,36 @@ internal fun TtsSettingsContent(preferences: ReaderPreferences) {
         },
         pillColor = MaterialTheme.colorScheme.surfaceContainerHighest,
     )
+    if (!supertonic) {
+        CheckboxItem(
+            label = stringResource(MR.strings.tts_save_audio),
+            checked = saveAudio,
+            onClick = {
+                preferences.ttsSaveAudio.set(!saveAudio)
+                TtsPlaybackService.applySettings(context)
+            },
+        )
+        Text(
+            stringResource(MR.strings.tts_save_audio_summary),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = SettingsItemsPaddings.Horizontal),
+        )
+    }
+    // While a chapter is being read aloud, the changes are heard there; a sample would talk over it.
+    if (session == null) {
+        IconItem(
+            label = stringResource(if (samplePlaying) MR.strings.tts_stop_sample else MR.strings.tts_play_sample),
+            icon = ImageVector.vectorResource(
+                if (samplePlaying) {
+                    MaterialSymbolsR.drawable.rounded_close
+                } else {
+                    MaterialSymbolsR.drawable.rounded_filled_play_arrow
+                },
+            ),
+            onClick = { if (samplePlaying) TtsSample.stop() else TtsSample.play(context, preferences) },
+        )
+    }
 }
 
 @Composable

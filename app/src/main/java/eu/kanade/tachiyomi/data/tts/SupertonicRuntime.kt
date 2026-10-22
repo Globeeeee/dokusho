@@ -13,6 +13,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import logcat.LogPriority
 import tachiyomi.core.common.util.system.logcat
 
@@ -38,6 +39,9 @@ object SupertonicRuntime {
 
     private var voice = SupertonicVoices.DEFAULT
     private var speed = 1f
+
+    /** The novel's language, or null to tell each sentence's language from its letters. */
+    private var language: String? = null
     private var generation = 0
 
     private val order = ArrayDeque<String>()
@@ -133,12 +137,26 @@ object SupertonicRuntime {
         return audio
     }
 
+    /** Reads the next novel in [language] (a code from [SupertonicLanguages]), or by its letters when null. */
+    fun setLanguage(language: String?) {
+        synchronized(gate) {
+            if (language == this.language) return
+            this.language = language
+            resetLocked()
+        }
+    }
+
     private fun applySettingsLocked(voiceId: String, rate: Float) {
         val resolved = SupertonicVoices.resolve(voiceId)
         val safeRate = rate.coerceIn(0.5f, 3f)
         if (resolved == voice && safeRate == speed) return
         voice = resolved
         speed = safeRate
+        resetLocked()
+    }
+
+    /** Drops audio made with other settings; sentences being waited for come back empty and are asked again. */
+    private fun resetLocked() {
         generation++
         order.clear()
         running.clear()
@@ -164,7 +182,7 @@ object SupertonicRuntime {
         if (atFront) order.addFirst(text) else order.addLast(text)
     }
 
-    private fun cacheKey(text: String) = "$voice|$speed|$text"
+    private fun cacheKey(text: String) = "$voice|$speed|${language.orEmpty()}|$text"
 
     private fun markHandedLocked(key: String, audio: FloatArray) {
         if (handedOut.add(key)) aheadSamples = (aheadSamples - audio.size).coerceAtLeast(0)
@@ -219,11 +237,13 @@ object SupertonicRuntime {
             }
             val synth = synchronized(gate) { synthesizer }
             val audio = try {
-                if (synth == null) {
-                    null
-                } else {
-                    synth.synthesize(job.text, supertonicLanguage(job.text), job.voice, job.speed)
-                }
+                // A sentence heard before, in this run or an earlier one, comes from disk instead of the model.
+                val diskKey = "supertonic|${job.key}"
+                withContext(Dispatchers.IO) { TtsClipCache.read(context, diskKey) }?.audio
+                    ?: synth?.synthesize(job.text, job.language, job.voice, job.speed)?.also { fresh ->
+                        val clip = TtsClip(fresh, synth.sampleRate)
+                        withContext(Dispatchers.IO) { TtsClipCache.write(context, diskKey, clip) }
+                    }
             } catch (e: CancellationException) {
                 synchronized(gate) { running.remove(job.key) }
                 throw e
@@ -255,7 +275,7 @@ object SupertonicRuntime {
                 return null
             }
             running.add(key)
-            return Pending(text, key, voice, speed, generation)
+            return Pending(text, key, voice, speed, language ?: supertonicLanguage(text), generation)
         }
         return null
     }
@@ -265,6 +285,7 @@ object SupertonicRuntime {
         val key: String,
         val voice: String,
         val speed: Float,
+        val language: String,
         val generation: Int,
     )
 }

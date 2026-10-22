@@ -112,6 +112,9 @@ class TtsPlaybackService : Service() {
     private var coverJob: Job? = null
     private lateinit var engine: TtsEngine
     private var engineId: String? = null
+
+    /** The novel's language as Supertonic codes it; null when only the text can tell. */
+    private var language: String? = null
     private lateinit var mediaSession: MediaSessionCompat
     private lateinit var audioManager: AudioManager
     private var focusRequest: AudioFocusRequest? = null
@@ -126,6 +129,7 @@ class TtsPlaybackService : Service() {
     private var playbackJob: Job? = null
     private var startJob: Job? = null
     private var sleepJob: Job? = null
+    private var applyJob: Job? = null
     private var sleepAtMillis: Long? = null
     private var incognito = false
     private var chapterStartedAt = 0L
@@ -275,7 +279,7 @@ class TtsPlaybackService : Service() {
             ACTION_NEXT_CHAPTER -> nextChapter()
             ACTION_SLEEP -> setSleepTimer(intent.getIntExtra(EXTRA_SLEEP_MINUTES, 0))
             ACTION_SPEED -> setSpeed(intent.getFloatExtra(EXTRA_SPEED, 1f))
-            ACTION_APPLY -> applySettings()
+            ACTION_APPLY -> scheduleApply()
             ACTION_STOP -> stopSession()
         }
         return START_NOT_STICKY
@@ -322,6 +326,7 @@ class TtsPlaybackService : Service() {
                 stopSession()
                 return@launch
             }
+            useLanguage(manga, loaded)
             this@TtsPlaybackService.manga = manga
             this@TtsPlaybackService.chapter = chapter
             queue = loaded
@@ -517,7 +522,7 @@ class TtsPlaybackService : Service() {
 
     /** Current chapter first, then the next one, so speech starts on audio that is already ready. */
     private fun primeSupertonic() {
-        if (!TtsEngines.isSupertonic(readerPreferences.ttsEngine.get())) return
+        if (!TtsEngines.isSupertonic(readerPreferences.ttsEngine.get()) || supertonicCantRead()) return
         SupertonicRuntime.plan(
             this,
             readerPreferences.ttsVoice.get(),
@@ -625,10 +630,21 @@ class TtsPlaybackService : Service() {
         if (playing) seekToPosition(queuePos)
     }
 
+    /**
+     * A dragged slider sends a change many times a second; apply only the last one, so the engine isn't
+     * torn down and restarted mid-initialisation on every step.
+     */
+    private fun scheduleApply() {
+        applyJob?.cancel()
+        applyJob = scope.launch {
+            delay(APPLY_DEBOUNCE_MS)
+            applySettings()
+        }
+    }
+
     /** Picks up an engine, voice or pitch change made in settings while a session is open. */
     private fun applySettings() {
-        val wanted = readerPreferences.ttsEngine.get()
-        if (wanted != engineId) {
+        if (engineKey() != engineId) {
             val wasPlaying = playing
             stopPlayback()
             engine.release()
@@ -640,15 +656,34 @@ class TtsPlaybackService : Service() {
         if (playing) seekToPosition(queuePos) else publishState()
     }
 
+    /** The engine and how it plays; a change to either needs a new engine instance. */
+    private fun engineKey() =
+        "${readerPreferences.ttsEngine.get()}|${readerPreferences.ttsSaveAudio.get()}|${supertonicCantRead()}"
+
     private fun openEngine() {
-        val id = readerPreferences.ttsEngine.get()
-        engineId = id
-        engine = if (TtsEngines.isSupertonic(id)) {
-            SupertonicTtsEngine(this)
-        } else {
-            AndroidTtsEngine(this, TtsEngines.systemPackage(id))
+        engineId = engineKey()
+        engine = TtsEngines.create(this, readerPreferences, systemOnly = supertonicCantRead()) {
+            scope.launch { toast(MR.strings.tts_engine_fallback) }
         }
-        applyEngineSettings()
+    }
+
+    /** Supertonic is chosen but the novel is in a language it doesn't read (Chinese, Thai, ...). */
+    private fun supertonicCantRead(): Boolean =
+        TtsEngines.isSupertonic(readerPreferences.ttsEngine.get()) &&
+            language?.let { !SupertonicLanguages.supports(it) } == true
+
+    /**
+     * Sets the language from the source, or from the chapter's own letters when the source covers several,
+     * and moves to the system voice when Supertonic can't read it.
+     */
+    private suspend fun useLanguage(manga: Manga, queue: List<QueueItem>) {
+        language = SupertonicLanguages.fromSource(sourceManager.get(manga.source)?.lang)
+            ?: supertonicLanguage(queue.take(LANGUAGE_SAMPLE).joinToString(" ") { it.text })
+        SupertonicRuntime.setLanguage(language)
+        if (engineKey() == engineId) return
+        engine.release()
+        openEngine()
+        if (supertonicCantRead()) toast(MR.strings.tts_supertonic_language)
     }
 
     private fun applyEngineSettings() {
@@ -925,6 +960,10 @@ class TtsPlaybackService : Service() {
 
     companion object {
         private const val COVER_SIZE = 512
+        private const val APPLY_DEBOUNCE_MS = 300L
+
+        /** Paragraphs looked at to tell the language of a chapter from its letters. */
+        private const val LANGUAGE_SAMPLE = 5
 
         private const val ACTION_START = "eu.kanade.tachiyomi.TTS_START"
         private const val ACTION_PLAY_PAUSE = "eu.kanade.tachiyomi.TTS_PLAY_PAUSE"

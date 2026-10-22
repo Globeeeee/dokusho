@@ -18,28 +18,54 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 
 /**
- * Speaks with the downloaded Supertonic voice. The models stay loaded in [SupertonicRuntime];
- * each sentence plays as soon as its audio is ready while later sentences synthesize ahead.
+ * Where a [ClipTtsEngine] gets the audio of one sentence: Supertonic on this device, or a system engine
+ * rendering to a file when "Save spoken audio" is on.
+ */
+interface ClipSource {
+    suspend fun prepare(): Boolean
+
+    /** The audio for [text] with these settings, or null when it can't be voiced. */
+    suspend fun clip(text: String, voice: String?, speed: Float, pitch: Float): TtsClip?
+
+    /** Sentences that follow [clip]'s, so they can be rendered while earlier ones play. */
+    fun ahead(texts: List<String>, voice: String?, speed: Float, pitch: Float) {}
+
+    /** True when [clip] already carries the pitch; otherwise the player shifts it. */
+    val bakesPitch: Boolean
+
+    fun release() {}
+}
+
+/** The downloaded Supertonic voice. The models stay loaded in [SupertonicRuntime], which also reads ahead. */
+class SupertonicClipSource(private val context: Context) : ClipSource {
+    override val bakesPitch = false
+
+    override suspend fun prepare() = SupertonicRuntime.prepare(context)
+
+    override suspend fun clip(text: String, voice: String?, speed: Float, pitch: Float): TtsClip? =
+        SupertonicRuntime.clip(context, SupertonicVoices.resolve(voice), speed, text)
+            ?.let { TtsClip(it, SupertonicRuntime.sampleRate()) }
+}
+
+/**
+ * Plays sentence clips from a [ClipSource]. Each sentence plays as soon as its audio is ready while
+ * later sentences render ahead.
  *
  * One [AudioTrack] stays open across sentences and paragraphs and is fed back to back, so clips
  * follow each other without a gap. Only [stop] (pause, seek, speed or voice change) closes it.
  */
-class SupertonicTtsEngine(private val context: Context) : TtsEngine {
+class ClipTtsEngine(private val source: ClipSource) : TtsEngine {
 
     private var sampleRate = 44_100
     private var speed = 1f
     private var pitch = 1f
-    private var voiceId = SupertonicVoices.DEFAULT
+    private var voiceId: String? = null
     private val output = AtomicReference<Output?>(null)
 
     /** Bumped by every [speak] and [stop]; a call whose number is stale has been stopped. */
     private val calls = AtomicInteger()
 
-    override suspend fun init(): Boolean {
-        if (!SupertonicRuntime.prepare(context)) return false
-        sampleRate = SupertonicRuntime.sampleRate()
-        return true
-    }
+    override suspend fun init(): Boolean = source.prepare()
 
     override suspend fun speak(text: String, onRange: (start: Int, end: Int) -> Unit): Boolean {
         val call = calls.incrementAndGet()
@@ -52,21 +78,30 @@ class SupertonicTtsEngine(private val context: Context) : TtsEngine {
         var searchFrom = 0
         var played = 0
         var failed = 0
-        for (chunk in supertonicChunks(text)) {
+        val chunks = supertonicChunks(text)
+        source.ahead(chunks, voiceId, speed, pitch)
+        for (chunk in chunks) {
             currentCoroutineContext().ensureActive()
             if (stopped()) return true
             val at = text.indexOf(chunk, searchFrom).takeIf { it >= 0 } ?: searchFrom
             searchFrom = at + chunk.length
             // The previous sentence keeps playing (and highlighting) while this one is fetched.
-            val audio = awaitClip(chunk) { out?.let(report) }
+            val clip = awaitClip(chunk) { out?.let(report) }
             if (stopped()) return true
-            if (audio == null) {
+            if (clip == null) {
                 // One sentence the model can't voice shouldn't end the session; a dead model fails every one.
-                logcat(LogPriority.WARN) { "Supertonic skipped a sentence it could not synthesize" }
+                logcat(LogPriority.WARN) { "Read aloud skipped a sentence it could not synthesize" }
                 failed++
                 continue
             }
+            val audio = clip.audio
             if (audio.isEmpty()) continue
+            sampleRate = clip.sampleRate
+            // A clip at another rate (a different engine's cache) needs a track at that rate.
+            if (out != null && out?.sampleRate != sampleRate) {
+                out = null
+                timeline.clear()
+            }
             val track = out ?: openOutput() ?: return stopped()
             out = track
             if (stopped()) return true
@@ -80,7 +115,7 @@ class SupertonicTtsEngine(private val context: Context) : TtsEngine {
                 }
                 Write.STALLED -> {
                     // A track that stopped moving can't hang the chapter: drop it, the next sentence opens a new one.
-                    logcat(LogPriority.WARN) { "Supertonic audio track stalled, reopening it" }
+                    logcat(LogPriority.WARN) { "Read aloud track stalled, reopening it" }
                     closeOutput(track)
                     timeline.clear()
                     out = null
@@ -110,7 +145,7 @@ class SupertonicTtsEngine(private val context: Context) : TtsEngine {
     }
 
     override fun setVoice(voiceName: String?) {
-        voiceId = SupertonicVoices.resolve(voiceName)
+        voiceId = voiceName
     }
 
     override fun stop() {
@@ -120,11 +155,12 @@ class SupertonicTtsEngine(private val context: Context) : TtsEngine {
 
     override fun release() {
         stop()
+        source.release()
     }
 
     /** The clip for [chunk]; [whileWaiting] runs every poll while it is still being synthesized. */
-    private suspend fun awaitClip(chunk: String, whileWaiting: () -> Unit): FloatArray? = coroutineScope {
-        val pending = async { SupertonicRuntime.clip(context, voiceId, speed, chunk) }
+    private suspend fun awaitClip(chunk: String, whileWaiting: () -> Unit): TtsClip? = coroutineScope {
+        val pending = async { source.clip(chunk, voiceId, speed, pitch) }
         while (!pending.isCompleted) {
             withTimeoutOrNull(POLL_MS) { pending.join() }
             if (!pending.isCompleted) whileWaiting()
@@ -140,17 +176,19 @@ class SupertonicTtsEngine(private val context: Context) : TtsEngine {
         output.get()?.applyVolume(ducked)
     }
 
+    private val trackPitch get() = if (source.bakesPitch) 1f else pitch
+
     private fun openOutput(): Output? {
         while (true) {
             val current = output.get()
             if (current != null && current.sampleRate == sampleRate && current.written < RECYCLE_FRAMES) {
-                current.applyPitch(pitch)
+                current.applyPitch(trackPitch)
                 return current
             }
             val fresh = Output.open(sampleRate) ?: return null
             if (output.compareAndSet(current, fresh)) {
                 current?.close()
-                fresh.applyPitch(pitch)
+                fresh.applyPitch(trackPitch)
                 fresh.applyVolume(ducked)
                 return fresh
             }
@@ -208,8 +246,16 @@ class SupertonicTtsEngine(private val context: Context) : TtsEngine {
             runCatching { track.setVolume(if (ducked) DUCKED_VOLUME else AudioTrack.getMaxVolume()) }
         }
 
-        /** Frames played since the track opened; the platform reports it as an unsigned 32-bit count. */
-        fun head(): Long = track.playbackHeadPosition.toLong() and 0xFFFF_FFFFL
+        @Volatile private var lastHead = 0L
+
+        /**
+         * Frames played since the track opened; the platform reports it as an unsigned 32-bit count.
+         * [stop] releases the track from the main thread while a write may still poll it, and a released
+         * track throws here, so it keeps the last position instead.
+         */
+        fun head(): Long = runCatching { track.playbackHeadPosition.toLong() and 0xFFFF_FFFFL }
+            .onSuccess { lastHead = it }
+            .getOrDefault(lastHead)
 
         private val stamp = AudioTimestamp()
 
@@ -262,7 +308,7 @@ class SupertonicTtsEngine(private val context: Context) : TtsEngine {
                         .setTransferMode(AudioTrack.MODE_STREAM)
                         .build()
                 } catch (e: Exception) {
-                    logcat(LogPriority.ERROR, e) { "Supertonic could not open an audio track" }
+                    logcat(LogPriority.ERROR, e) { "Read aloud could not open an audio track" }
                     return null
                 }
                 if (player.state != AudioTrack.STATE_INITIALIZED) {
@@ -273,7 +319,7 @@ class SupertonicTtsEngine(private val context: Context) : TtsEngine {
                     player.play()
                     Output(player, sampleRate)
                 } catch (e: IllegalStateException) {
-                    logcat(LogPriority.ERROR, e) { "Supertonic could not start the audio track" }
+                    logcat(LogPriority.ERROR, e) { "Read aloud could not start the audio track" }
                     player.release()
                     null
                 }
@@ -305,7 +351,7 @@ class SupertonicTtsEngine(private val context: Context) : TtsEngine {
 }
 
 /**
- * Where each sentence of one [SupertonicTtsEngine.speak] call sits in the track's frame count, so
+ * Where each sentence of one [ClipTtsEngine.speak] call sits in the track's frame count, so
  * the playback head maps back to the word being spoken while later sentences are already queued.
  */
 internal class ClipTimeline {
@@ -359,7 +405,7 @@ internal class StallWatch(private val limitMs: Long) {
 }
 
 /**
- * Supertonic reports no word timings, so the spoken word is estimated from playback progress:
+ * Clips carry no word timings, so the spoken word is estimated from playback progress:
  * each word weighs its letters, plus a pause after commas and sentence ends.
  */
 internal class SpokenWords(text: String) {

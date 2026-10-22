@@ -13,7 +13,7 @@
     <!-- Models -->
     <string name="name">Name</string>
     <string name="categories">Categories</string>
-    <string name="manga">Library entries</string>
+    <string name="manga">Library novels</string>
     <string name="chapters">Chapters</string>
     <string name="track">Tracking</string>
     <string name="delete_downloaded">Delete downloaded</string>
@@ -61,7 +61,7 @@
     <!-- reserved for #4048 -->
     <string name="action_filter_empty">Remove filter</string>
     <string name="action_sort_alpha">Alphabetically</string>
-    <string name="action_sort_count">Total entries</string>
+    <string name="action_sort_count">Total novels</string>
     <string name="action_sort_total">Total chapters</string>
     <string name="action_sort_last_read">Last read</string>
     <string name="action_sort_last_manga_update">Last update check</string>
@@ -91,7 +91,7 @@
     <string name="action_edit">Edit</string>
     <string name="action_add">Add</string>
     <string name="action_update_category">Update category</string>
-    <string name="action_open_random_manga">Open random entry</string>
+    <string name="action_open_random_manga">Open random novel</string>
     <string name="action_add_category">Add category</string>
     <string name="action_edit_categories">Edit categories</string>
     <string name="action_rename_category">Rename category</string>
@@ -109,7 +109,7 @@
     <string name="action_start">Start</string>
     <string name="action_resume">Resume</string>
     <string name="action_open_in_browser">Open in browser</string>
-    <string name="action_show_manga">Show entry</string>
+    <string name="action_show_manga">Show novel</string>
     <string name="action_copy_to_clipboard">Copy to clipboard</string>
     <string name="action_copy_link">Copy link</string>
     <!-- Do not translate "WebView" -->
@@ -305,9 +305,9 @@
     <string name="restrictions">Restrictions: %s</string>
 
     <string name="pref_library_update_smart_update">Smart update</string>
-    <string name="pref_update_only_completely_read">Skip entries with unread chapter(s)</string>
-    <string name="pref_update_only_non_completed">Skip entries with \"Completed\" status</string>
-    <string name="pref_update_only_started">Skip unstarted entries</string>
+    <string name="pref_update_only_completely_read">Skip novels with unread chapter(s)</string>
+    <string name="pref_update_only_non_completed">Skip novels with \"Completed\" status</string>
+    <string name="pref_update_only_started">Skip unstarted novels</string>
     <string name="pref_update_only_in_release_period">Predict next release time</string>
     <string name="pref_library_update_show_tab_badge">Show unread count on Updates icon</string>
 
@@ -317,7 +317,7 @@
     <string name="default_category">Default category</string>
     <string name="default_category_summary">Always ask</string>
     <string name="categorized_display_settings">Per-category settings for sort</string>
-    <string name="pref_library_update_categories_details">Entries in excluded categories will not be updated even if they are also in included categories.</string>
+    <string name="pref_library_update_categories_details">Novels in excluded categories will not be updated even if they are also in included categories.</string>
     <string name="all">All</string>
     <string name="none">None</string>
     <string name="include">Include: %s</string>
@@ -462,7 +462,7 @@
     <string name="pref_reader_actions">Actions</string>
     <string name="pref_read_with_long_tap">Show actions on long tap</string>
     <string name="pref_create_folder_per_manga">Save pages into separate folders</string>
-    <string name="pref_create_folder_per_manga_summary">Creates folders according to entries\' title</string>
+    <string name="pref_create_folder_per_manga_summary">Creates a folder named after each novel\'s title</string>
     <string name="pref_reader_theme">Background color</string>
     <string name="white_background">White</string>
     <string name="gray_background">Gray</string>
@@ -572,7 +572,7 @@
     <string name="pref_category_auto_download">Auto-download</string>
     <string name="pref_download_new">Download new chapters</string>
     <string name="pref_download_new_unread_chapters_only">Skip downloading duplicate read chapters</string>
-    <string name="pref_download_new_categories_details">Entries in excluded categories will not be downloaded even if they are also in included categories.</string>
+    <string name="pref_download_new_categories_details">Novels in excluded categories will not be downloaded even if they are also in included categories.</string>
     <string name="download_ahead">Download ahead</string>
     <string name="auto_download_while_reading">Auto download while reading</string>
     <string name="download_ahead_info">Only works if the current chapter + the next one are already downloaded.</string>
@@ -588,17 +588,17 @@
     <string name="pref_auto_update_manga_sync">Update progress after reading</string>
     <string name="pref_auto_update_manga_on_mark_read">Update progress when marked as read</string>
     <string name="services">Trackers</string>
-    <string name="tracking_info">One-way sync to update the chapter progress in external tracker services. Set up tracking for individual entries from their tracking button.</string>
+    <string name="tracking_info">One-way sync to update the chapter progress in external tracker services. Set up tracking for individual novels from their tracking button.</string>
     <string name="enhanced_services">Enhanced trackers</string>
     <string name="enhanced_services_not_installed">Available but source not installed: %s</string>
-    <string name="enhanced_tracking_info">Provides enhanced features for specific sources. Entries are automatically tracked when added to your library.</string>
+    <string name="enhanced_tracking_info">Provides enhanced features for specific sources. Novels are automatically tracked when added to your library.</string>
     <string name="track_activity_name">Tracker login</string>
     <string name="refresh_tracker_profile">Refresh tracker profile</string>
     <string name="refresh_tracker_success">%s profile refreshed</string>
     <string name="refresh_tracker_error">%1$s refresh error: %2$s</string>
 
       <!-- Browse section -->
-    <string name="pref_hide_in_library_items">Hide entries already in library</string>
+    <string name="pref_hide_in_library_items">Hide novels already in library</string>
 
       <!-- Data and storage section -->
     <string name="pref_storage_location">Storage location</string>
@@ -612,7 +612,7 @@
     <string name="backup_created">Backup created</string>
     <string name="invalid_backup_file">Invalid backup file:</string>
     <string name="invalid_backup_file_error">Full error:</string>
-    <string name="invalid_backup_file_missing_manga">Backup does not contain any library entries.</string>
+    <string name="invalid_backup_file_missing_manga">Backup does not contain any library novels.</string>
     <string name="invalid_backup_file_json">JSON backup not supported</string>
     <string name="invalid_backup_file_unknown">Backup file is corrupted</string>
     <string name="backup_restore_missing_sources">Missing sources:</string>
@@ -625,11 +625,11 @@
     <string name="app_settings">App settings</string>
     <string name="source_settings">Source settings</string>
     <string name="private_settings">Include sensitive settings (e.g., tracker login tokens)</string>
-    <string name="non_library_settings">All read entries</string>
+    <string name="non_library_settings">All read novels</string>
     <string name="creating_backup">Creating backup</string>
     <string name="creating_backup_error">Backup failed</string>
     <string name="missing_storage_permission">Storage permissions not granted</string>
-    <string name="empty_backup_error">No library entries to back up</string>
+    <string name="empty_backup_error">No library novels to back up</string>
     <string name="create_backup_file_error">Couldn\'t create a backup file</string>
     <string name="restore_miui_warning">Backup/restore may not function properly if MIUI Optimization is disabled.</string>
     <string name="restore_in_progress">Restore is already in progress</string>
@@ -668,12 +668,12 @@
     <string name="pref_invalidate_download_cache_summary">Force app to recheck downloaded chapters</string>
     <string name="download_cache_invalidated">Recreating download index</string>
     <string name="pref_clear_database">Clear database</string>
-    <string name="pref_clear_database_summary">Delete history for entries that are not saved in your library</string>
-    <string name="clear_database_source_item_count">%1$d non-library entries in database</string>
-    <string name="clear_database_text">You’re about to remove entries from the database</string>
-    <string name="clear_database_history_warning">Read chapters and progress of non-library entries will be lost</string>
-    <string name="clear_db_exclude_read">Keep entries with read chapters</string>
-    <string name="clear_database_completed">Entries deleted</string>
+    <string name="pref_clear_database_summary">Delete history for novels that are not saved in your library</string>
+    <string name="clear_database_source_item_count">%1$d non-library novels in database</string>
+    <string name="clear_database_text">You’re about to remove novels from the database</string>
+    <string name="clear_database_history_warning">Read chapters and progress of non-library novels will be lost</string>
+    <string name="clear_db_exclude_read">Keep novels with read chapters</string>
+    <string name="clear_database_completed">Novels deleted</string>
     <string name="database_clean">Nothing to clear</string>
     <string name="pref_clear_webview_data">Clear WebView data</string>
     <string name="webview_data_deleted">WebView data cleared</string>
@@ -718,7 +718,7 @@
     <string name="pref_incognito_mode_summary">Pauses reading history</string>
     <string name="pref_incognito_mode_extension_summary">Pause reading history for extension</string>
     <string name="notification_incognito_text">Disable incognito mode</string>
-    <string name="downloaded_only_summary">Filters all entries in your library</string>
+    <string name="downloaded_only_summary">Filters all novels in your library</string>
 
 
     <!-- Login dialog -->
@@ -782,7 +782,7 @@
     <string name="remove_from_library">Remove from library</string>
     <string name="unknown_title">Unknown title</string>
     <string name="possible_duplicates_title">Possible duplicates</string>
-    <string name="possible_duplicates_summary">You have entries in your library with a similar name.\n\nSelect an entry to migrate or add anyway.</string>
+    <string name="possible_duplicates_summary">You have novels in your library with a similar name.\n\nSelect a novel to migrate or add anyway.</string>
     <string name="manga_added_library">Added to library</string>
     <string name="manga_removed_library">Removed from library</string>
     <string name="manga_info_expand">More</string>
@@ -823,7 +823,7 @@
     <string name="confirm_delete_chapters">Are you sure you want to delete the selected chapters?</string>
     <string name="chapter_settings">Chapter settings</string>
     <string name="confirm_set_chapter_settings">Are you sure you want to save these settings as default?</string>
-    <string name="also_set_chapter_settings_for_library">Also apply to all entries in my library</string>
+    <string name="also_set_chapter_settings_for_library">Also apply to all novels in my library</string>
     <string name="set_chapter_settings_as_default">Set as default</string>
     <string name="no_chapters_error">No chapters found</string>
     <string name="are_you_sure">Are you sure?</string>
@@ -878,7 +878,7 @@
 
     <!-- Dialog option with checkbox view -->
     <string name="dialog_with_checkbox_remove_description">This will remove the read date of this chapter. Are you sure?</string>
-    <string name="dialog_with_checkbox_reset">Reset all chapters for this entry</string>
+    <string name="dialog_with_checkbox_reset">Reset all chapters for this novel</string>
 
     <!-- Image notifier -->
     <string name="picture_saved">Picture saved</string>
@@ -952,14 +952,14 @@
 
     <!-- Stats screen -->
     <string name="label_overview_section">Overview</string>
-    <string name="label_completed_titles">Completed entries</string>
+    <string name="label_completed_titles">Completed novels</string>
     <string name="label_read_duration">Read duration</string>
-    <string name="label_titles_section">Entries</string>
+    <string name="label_titles_section">Novels</string>
     <string name="label_titles_in_global_update">In global update</string>
     <string name="label_total_chapters">Total</string>
     <string name="label_read_chapters">Read</string>
     <string name="label_tracker_section">Trackers</string>
-    <string name="label_tracked_titles">Tracked entries</string>
+    <string name="label_tracked_titles">Tracked novels</string>
     <string name="label_mean_score">Mean score</string>
     <string name="label_used">Used</string>
     <string name="not_applicable">N/A</string>
@@ -982,7 +982,7 @@
     <string name="notification_chapters_multiple">Chapters %1$s</string>
     <string name="learn_more">Tap to learn more</string>
     <string name="notification_cover_update_failed">Failed to update cover</string>
-    <string name="notification_first_add_to_library">Please add the entry to your library before doing this</string>
+    <string name="notification_first_add_to_library">Please add the novel to your library before doing this</string>
     <string name="library_errors_help">For help on how to fix library update errors, see %1$s</string>
     <string name="skipped_reason_completed">Skipped because series is complete</string>
     <string name="skipped_reason_not_caught_up">Skipped because there are unread chapters</string>
@@ -1016,7 +1016,7 @@
     <string name="information_no_recent_manga">Nothing read recently</string>
     <string name="information_empty_library">Your library is empty</string>
     <string name="information_no_manga_category">Category is empty</string>
-    <string name="information_no_entries_found">No entries found in this category</string>
+    <string name="information_no_entries_found">No novels found in this category</string>
     <string name="getting_started_guide">Getting started guide</string>
     <string name="library_empty_hint">Find a novel in Browse, open it and tap Add to library. New here? Install a source from Extensions first.</string>
     <string name="library_empty_browse">Browse novels</string>
@@ -1079,7 +1079,7 @@
     <string name="spen_next_page">Next page</string>
 
     <!-- App widget -->
-    <string name="appwidget_updates_description">See your recently updated library entries</string>
+    <string name="appwidget_updates_description">See your recently updated library novels</string>
     <string name="appwidget_unavailable_locked">Widget not available when app lock is enabled</string>
     <string name="remove_manga">You are about to remove \"%s\" from your library</string>
 
@@ -1100,12 +1100,12 @@
     <string name="migrationConfigScreen.selectPinnedLabel">Select pinned sources</string>
     <string name="migrationConfigScreen.continueButtonText">Continue</string>
     <string name="migrationConfigScreen.dataToMigrateHeader">Data to migrate</string>
-    <string name="migrationConfigScreen.removeDownloadsTitle">Delete downloads of current entry after migration</string>
+    <string name="migrationConfigScreen.removeDownloadsTitle">Delete downloads of current novel after migration</string>
     <string name="migrationConfigScreen.additionalSearchQueryLabel">Additional keywords (optional)</string>
     <string name="migrationConfigScreen.additionalSearchQuerySupportingText">Helps narrow down search results by adding additional keywords</string>
-    <string name="migrationConfigScreen.hideUnmatchedTitle">Hide entries without a match</string>
-    <string name="migrationConfigScreen.hideWithoutUpdatesTitle">Hide entries without newer chapters</string>
-    <string name="migrationConfigScreen.hideWithoutUpdatesSubtitle">Only show entry if the match has additional chapters</string>
+    <string name="migrationConfigScreen.hideUnmatchedTitle">Hide novels without a match</string>
+    <string name="migrationConfigScreen.hideWithoutUpdatesTitle">Hide novels without newer chapters</string>
+    <string name="migrationConfigScreen.hideWithoutUpdatesSubtitle">Only show novel if the match has additional chapters</string>
     <string name="migrationConfigScreen.enhancedOptionsWarning">These options are slow and dangerous and may lead to restrictions from sources</string>
     <string name="migrationConfigScreen.deepSearchModeTitle">Advanced search mode</string>
     <string name="migrationConfigScreen.deepSearchModeSubtitle">Breaks down the title into keywords for a wider search</string>
@@ -1129,7 +1129,7 @@
     <string name="migrationListScreen.migrateDialog.migrateLabel">Migrate</string>
     <string name="migrationListScreen.migrateDialog.cancelLabel">Cancel</string>
     <string name="migrationListScreen.progressDialog.cancelLabel">Cancel</string>
-    <string name="migrationListScreen.matchWithoutChapterToast">No chapters found, this entry cannot be used for migration</string>
+    <string name="migrationListScreen.matchWithoutChapterToast">No chapters found, this novel cannot be used for migration</string>
 
     <string name="supportUsScreen.perks">Patrons get access to exclusive channels, with more perks to come.</string>
     <string name="supportUsScreen.donationPlatform.patreon">Patreon (preferred)</string>
@@ -1228,6 +1228,18 @@
     <string name="tts_supertonic_failed">Couldn’t download Supertonic. Tap to try again.</string>
     <string name="tts_supertonic_notification">Downloading Supertonic</string>
     <string name="tts_settings">Read aloud settings</string>
+    <string name="tts_supertonic_language">Supertonic can’t read this novel’s language, so the system voice is reading it</string>
+    <string name="tts_engine_fallback">That engine couldn’t read aloud, so the system default is reading instead</string>
+    <string name="tts_status_ready">Ready to read aloud.</string>
+    <string name="tts_status_no_voice">No voice installed for your language. Install one to read aloud with this engine.</string>
+    <string name="tts_status_online">Cloud voices only: reading aloud needs an internet connection.</string>
+    <string name="tts_status_unavailable">This engine couldn’t start. Reading aloud uses the system default instead.</string>
+    <string name="tts_install_voices">Install voices</string>
+    <string name="tts_play_sample">Play sample</string>
+    <string name="tts_stop_sample">Stop sample</string>
+    <string name="tts_sample_text">This is how the voice sounds while you read.</string>
+    <string name="tts_save_audio">Save spoken audio</string>
+    <string name="tts_save_audio_summary">System engines keep each sentence on this device (up to 300 MB), so a chapter played again starts at once</string>
     <string name="action_stop">Stop</string>
     <!-- Novel export (EPUB, PDF) -->
     <string name="channel_export">Novel export</string>

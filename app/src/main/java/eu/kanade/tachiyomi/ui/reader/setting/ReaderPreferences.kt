@@ -351,6 +351,9 @@ class ReaderPreferences(
 
     val ttsShowCover: Preference<Boolean> = preferenceStore.getBoolean("pref_tts_show_cover", true)
 
+    /** System engines render each sentence to audio kept on the device, instead of speaking live. */
+    val ttsSaveAudio: Preference<Boolean> = preferenceStore.getBoolean("pref_tts_save_audio", false)
+
     /**
      * Read-aloud engine. Empty is the device default, a package name is a specific system engine,
      * and [eu.kanade.tachiyomi.data.tts.TtsEngines.SUPERTONIC] is the neural voice (not downloaded).

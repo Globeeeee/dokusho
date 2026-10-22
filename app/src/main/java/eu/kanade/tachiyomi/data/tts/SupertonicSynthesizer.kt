@@ -358,20 +358,63 @@ private fun splitAtLength(text: String, maxLen: Int): List<String> {
     return chunks
 }
 
+/** Languages the Supertonic 3 model reads, as the codes its text tags use. */
+object SupertonicLanguages {
+    private val SUPPORTED = setOf(
+        "en", "ko", "ja", "ar", "bg", "cs", "da", "de", "el", "es", "et", "fi", "fr", "hi", "hr", "hu",
+        "id", "it", "lt", "lv", "nl", "pl", "pt", "ro", "ru", "sk", "sl", "sv", "tr", "uk", "vi",
+    )
+
+    fun supports(language: String) = language in SUPPORTED
+
+    /** A source language ("pt-BR", "es-419", "all") as a plain language code, or null when it names none. */
+    fun fromSource(lang: String?): String? =
+        lang?.substringBefore('-')?.lowercase()?.takeUnless { it.isBlank() || it == "all" || it == "other" }
+}
+
+/**
+ * The language of [text] from the letters it uses. Latin text can't be told apart this way and reads as
+ * English; the source's language is preferred when it names one. Han text without kana comes back as
+ * "zh" and Thai as "th", which Supertonic can't read.
+ */
 internal fun supertonicLanguage(text: String): String {
     var hangul = 0
     var kana = 0
+    var han = 0
     var latin = 0
+    var cyrillic = 0
+    var ukrainian = 0
+    var greek = 0
+    var arabic = 0
+    var devanagari = 0
+    var thai = 0
     for (char in text) {
         when (char.code) {
             in 0xAC00..0xD7A3 -> hangul++
             in 0x3040..0x30FF -> kana++
+            in 0x4E00..0x9FFF -> han++
             in 'A'.code..'Z'.code, in 'a'.code..'z'.code -> latin++
+            in 0x0400..0x04FF -> {
+                cyrillic++
+                if (char in "іїєґІЇЄҐ") ukrainian++
+            }
+            in 0x0370..0x03FF -> greek++
+            in 0x0600..0x06FF -> arabic++
+            in 0x0900..0x097F -> devanagari++
+            in 0x0E00..0x0E7F -> thai++
         }
     }
-    return when {
-        hangul > kana && hangul >= latin -> "ko"
-        kana > hangul && kana >= latin -> "ja"
-        else -> "en"
-    }
+    val scripts = listOf(
+        "ko" to hangul,
+        // Japanese mixes kana with kanji; Han alone is Chinese.
+        "ja" to if (kana > 0) kana + han else 0,
+        "zh" to if (kana == 0) han else 0,
+        (if (ukrainian > 0) "uk" else "ru") to cyrillic,
+        "el" to greek,
+        "ar" to arabic,
+        "hi" to devanagari,
+        "th" to thai,
+    )
+    val (language, count) = scripts.maxBy { it.second }
+    return if (count > latin) language else "en"
 }
